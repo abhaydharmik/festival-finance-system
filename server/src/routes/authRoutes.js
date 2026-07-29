@@ -11,6 +11,8 @@ router.post("/login", authController.login);
 
 router.get("/profile", protect, authController.getProfile);
 
+router.put("/change-password", protect, authController.changePassword);
+
 router.get("/admin-test", protect, authorize("admin"), (req, res) => {
   res.json({
     success: true,

@@ -45,6 +45,30 @@ const loginUser = async (email, password) => {
   };
 };
 
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await User.findById(userId).select("+password");
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const isMatch = await user.comparePassword(currentPassword);
+
+  if (!isMatch) {
+    throw new Error("Current password is incorrect.");
+  }
+
+  user.password = newPassword;
+
+  // Password will be hashed automatically by pre("save")
+  await user.save();
+
+  return {
+    message: "Password changed successfully",
+  };
+};
+
 module.exports = {
   loginUser,
+  changePassword,
 };
