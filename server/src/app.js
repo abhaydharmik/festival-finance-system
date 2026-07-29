@@ -2,9 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
-const authRoutes = require("./routes/authRoutes")
+const authRoutes = require("./routes/authRoutes");
+const festivalRoutes = require("./routes/festivalRoutes");
 
-const errorHandler = require("./middleware/errorMiddleware")
+const errorHandler = require("./middleware/errorMiddleware");
 
 const app = express();
 
@@ -15,8 +16,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Routes
-app.use("/api/auth", authRoutes)
-
+app.use("/api/auth", authRoutes);
+app.use("/api/festivals", festivalRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
@@ -26,6 +27,6 @@ app.get("/", (req, res) => {
   });
 });
 
-app.use(errorHandler)
+app.use(errorHandler);
 
 module.exports = app;
