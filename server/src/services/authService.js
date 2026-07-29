@@ -1,24 +1,25 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const ApiError = require("../utils/ApiError");
 
 const loginUser = async (email, password) => {
   // Find user and include password
   const user = await User.findOne({ email }).select("+password");
 
   if (!user) {
-    throw new Error("Invalid email or password");
+    throw new ApiError(401, "Invalid email or password");
   }
 
   //Check account status
   if (!user.isActive) {
-    throw new Error("Account is deactivated");
+    throw new ApiError(403, "Account is deactivated");
   }
 
   // Compare password
   const isMatch = await user.comparePassword(password);
 
   if (!isMatch) {
-    throw new Error("Invalid email or password");
+    throw new ApiError(401, "Invalid email or password");
   }
 
   // Generate JWT
@@ -49,13 +50,13 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   const user = await User.findById(userId).select("+password");
 
   if (!user) {
-    throw new Error("User not found");
+    throw new ApiError(404, "User not found");
   }
 
   const isMatch = await user.comparePassword(currentPassword);
 
   if (!isMatch) {
-    throw new Error("Current password is incorrect.");
+    throw new ApiError(401, "Current password is incorrect.");
   }
 
   user.password = newPassword;

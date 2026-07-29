@@ -1,40 +1,27 @@
-const authservice = require("../services/authService");
+const authService = require("../services/authService");
+const ApiError = require("../utils/ApiError");
+const ApiResponse = require("../utils/ApiResponse");
+const asyncHandler = require("../utils/asyncHandler");
 
-const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    // Validation
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required.",
-      });
-    }
-
-    const data = await authservice.loginUser(email, password);
-
-    return res.status(200).json({
-      success: true,
-      message: "Login successfully",
-      ...data,
-    });
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: error.message,
-    });
+  if (!email || !password) {
+    throw new ApiError(400, "Email and password are required");
   }
-};
 
-const getProfile = async (req, res) => {
-  try {
-    const { _id, name, email, phone, role, isActive, createdAt } = req.user;
+  const data = await authService.loginUser(email, password);
 
-    res.status(200).json({
-      success: true,
-      user: {
+  return res.status(200).json(new ApiResponse(200, data, "Login Successful"));
+});
+
+const getProfile = asyncHandler(async (req, res) => {
+  const { _id, name, email, phone, role, isActive, createdAt } = req.user;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
         id: _id,
         name,
         email,
@@ -43,43 +30,26 @@ const getProfile = async (req, res) => {
         isActive,
         createdAt,
       },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+      "Profile fetched Successfully",
+    ),
+  );
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    throw new ApiError(400, "Current password and new password are required");
   }
-};
 
-const changePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
+  const result = await authService.changePassword(
+    req.user._id,
+    currentPassword,
+    newPassword,
+  );
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Current password and new password are required",
-      });
-    }
-
-    const result = await authservice.changePassword(
-      req.user._id,
-      currentPassword,
-      newPassword,
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: result.message,
-    });
-  } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  return res.status(200).json(new ApiResponse(200, result, result.message));
+});
 
 module.exports = {
   login,

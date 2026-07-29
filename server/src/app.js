@@ -4,6 +4,8 @@ const cookieParser = require("cookie-parser");
 
 const authRoutes = require("./routes/authRoutes")
 
+const errorHandler = require("./middleware/errorMiddleware")
+
 const app = express();
 
 // Middleware
@@ -23,5 +25,7 @@ app.get("/", (req, res) => {
     message: "Festival Finance System API is running....",
   });
 });
+
+app.use(errorHandler)
 
 module.exports = app;
