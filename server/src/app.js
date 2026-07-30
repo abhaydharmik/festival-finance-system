@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 
 const authRoutes = require("./routes/authRoutes");
 const festivalRoutes = require("./routes/festivalRoutes");
+const incomeRoutes = require("./routes/incomeRoutes");
 
 const errorHandler = require("./middleware/errorMiddleware");
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/festivals", festivalRoutes);
+app.use("/api/income", incomeRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
