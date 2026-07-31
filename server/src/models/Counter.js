@@ -9,7 +9,11 @@ const counterSchema = new mongoose.Schema(
       uppercase: true,
       trim: true,
     },
-    sequence: {
+    incomeSequence: {
+      type: Number,
+      default: 0,
+    },
+    expenseSequence: {
       type: Number,
       default: 0,
     },
