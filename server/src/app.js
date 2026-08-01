@@ -6,6 +6,7 @@ const authRoutes = require("./routes/authRoutes");
 const festivalRoutes = require("./routes/festivalRoutes");
 const incomeRoutes = require("./routes/incomeRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
+const cashDistributionsRoutes = require("./routes/cashDistributionRoutes");
 
 const errorHandler = require("./middleware/errorMiddleware");
 
@@ -22,6 +23,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/festivals", festivalRoutes);
 app.use("/api/income", incomeRoutes);
 app.use("/api/expense", expenseRoutes);
+app.use("/api/cash-distributions", cashDistributionsRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

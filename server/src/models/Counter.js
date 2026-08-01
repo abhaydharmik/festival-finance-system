@@ -17,6 +17,10 @@ const counterSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    distributionSequence: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

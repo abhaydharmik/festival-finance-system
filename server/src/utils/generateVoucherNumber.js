@@ -5,7 +5,7 @@ const generateVoucherNumber = async (festivalCode) => {
     { festivalCode },
     { $inc: { expenseSequence: 1 } },
     {
-      new: true,
+      returnDocument: "after",
       upsert: true,
     },
   );

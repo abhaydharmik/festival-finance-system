@@ -5,7 +5,7 @@ const generateReceiptNumber = async (festivalCode) => {
     { festivalCode },
     { $inc: { incomeSequence: 1 } },
     {
-      new: true,
+      returnDocument: "after",
       upsert: true,
     },
   );
