@@ -9,7 +9,7 @@ const seedAdmin = async () => {
     await connectDB();
 
     const existingAdmin = await User.findOne({
-      email: "volunteer@festival.com",
+      email: "volunteer3@festival.com",
     });
 
     if (existingAdmin) {
@@ -18,9 +18,9 @@ const seedAdmin = async () => {
     }
 
     await User.create({
-      name: "President",
-      email: "volunteer@festival.com",
-      password: "123456",
+      name: "Volunteer 3",
+      email: "volunteer3@festival.com",
+      password: "12345678",
       role: "volunteer",
     });
 

@@ -31,6 +31,21 @@ const cashDistributionSchema = new mongoose.Schema(
       min: [1, "Amount must be greater than zero"],
     },
 
+    amountReturned: {
+      type:Number,
+      default: 0,
+      min: [0, "Returned amount cannot be negative "]
+    },  
+
+    returnedDate: {
+      type: Date,
+    },
+
+    settledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
     purpose: {
       type: String,
       enum: Object.values(DISTRIBUTION_PURPOSE),

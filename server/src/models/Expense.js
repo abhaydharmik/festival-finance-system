@@ -13,6 +13,11 @@ const expenseSchema = new mongoose.Schema(
       required: true,
     },
 
+    distributionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CashDistribution",
+    },
+
     voucherNumber: {
       type: String,
       required: true,

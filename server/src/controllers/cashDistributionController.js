@@ -108,6 +108,28 @@ const getCashDistributionSummary = asyncHandler(async (req, res) => {
     );
 });
 
+// Settle Cash Distribution
+
+const settleCashDistribution = asyncHandler(async (req, res) => {
+  const { amountReturned } = req.body;
+
+  const settlement = await cashDistributionService.settleCashDistribution(
+    req.params.id,
+    amountReturned,
+    req.user._id,
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        settlement,
+        "Cash distribution settled successfully",
+      ),
+    );
+});
+
 module.exports = {
   createCashDistribution,
   getAllCashDistributions,
@@ -115,4 +137,5 @@ module.exports = {
   updateCashDistribution,
   cancelCashDistribution,
   getCashDistributionSummary,
+  settleCashDistribution,
 };

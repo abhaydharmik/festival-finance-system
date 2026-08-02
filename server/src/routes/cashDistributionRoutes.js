@@ -9,6 +9,7 @@ const {
   updateCashDistribution,
   cancelCashDistribution,
   getCashDistributionSummary,
+  settleCashDistribution,
 } = require("../controllers/cashDistributionController");
 
 const router = express.Router();
@@ -28,6 +29,14 @@ router.get("/:id", protect, getCashDistributionById);
 // Update distribution - Admin only
 router.put("/:id", protect, authorize("admin"), updateCashDistribution);
 
+// Settle Cash distribution - Admin only
+router.patch(
+  "/:id/settle",
+  protect,
+  authorize("admin"),
+  settleCashDistribution,
+);
+
 // Cancel distribution - Admin only
 router.patch(
   "/:id/cancel",
@@ -35,5 +44,4 @@ router.patch(
   authorize("admin"),
   cancelCashDistribution,
 );
-
-module.exports = router
+module.exports = router;

@@ -11,6 +11,7 @@ const {
 } = require("../constants/cashDistributionConstants");
 const generateDistributionNumber = require("../utils/generateDistributionNumber");
 const { USER_ROLES } = require("../constants/userConstants");
+const Expense = require("../models/Expense");
 
 // Create Cash Distribution
 
@@ -315,6 +316,104 @@ const getCashDistributionSummary = async () => {
   );
 };
 
+// Settle Cash Distribution
+const settleCashDistribution = async (
+  distributionId,
+  amountReturned,
+  userId,
+) => {
+  const distribution = await CashDistribution.findById(distributionId);
+
+  if (!distribution) {
+    throw new ApiError(404, "Cash distribution not found");
+  }
+
+  if (distribution.isCancelled) {
+    throw new ApiError(400, "Cancelled distribution cannot be settled");
+  }
+
+  if (distribution.status === DISTRIBUTION_STATUS.SETTLED) {
+    throw new ApiError(400, "Cash distribution is already settled");
+  }
+
+  const expenseSummary = await Expense.aggregate([
+    {
+      $match: {
+        distributionId: distribution._id,
+        isCancelled: false,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalExpense: {
+          $sum: "$amount",
+        },
+      },
+    },
+  ]);
+
+  const totalExpense = expenseSummary[0]?.totalExpense || 0;
+
+  const remainingCash =
+    distribution.amountGiven - totalExpense - amountReturned;
+
+  console.log({
+    amountGiven: distribution.amountGiven,
+    totalExpense,
+    amountReturned,
+    expectedReturn: distribution.amountGiven - totalExpense,
+    remainingCash,
+  });
+
+  if (amountReturned < 0) {
+    throw new ApiError(400, "Returned amount cannot be negative");
+  }
+
+  if (remainingCash < 0) {
+    throw new ApiError(400, "Returned amount exceeds remaining cash");
+  }
+
+  const isSettled = remainingCash === 0;
+
+  const expectedReturn = distribution.amountGiven - totalExpense;
+
+  const returnedAmount = Number(amountReturned);
+
+  if (returnedAmount !== expectedReturn) {
+    throw new ApiError(
+      400,
+      `Returned amount must be exactly ₹${expectedReturn}`,
+    );
+  }
+
+  distribution.amountReturned = returnedAmount;
+  distribution.returnedDate = new Date();
+  distribution.settledBy = userId;
+  distribution.status = isSettled
+    ? DISTRIBUTION_STATUS.SETTLED
+    : DISTRIBUTION_STATUS.PENDING;
+
+  await distribution.save();
+
+  const updatedDistribution = await CashDistribution.findById(distribution._id)
+    .populate("festivalId", "name year festivalCode")
+    .populate("volunteerId", "name email")
+    .populate("givenBy", "name email")
+    .populate("settledBy", "name email");
+
+  return {
+    distribution: updatedDistribution,
+    settlement: {
+      amountGiven: distribution.amountGiven,
+      totalExpense,
+      amountReturned,
+      remainingCash,
+      status: updatedDistribution.status,
+    },
+  };
+};
+
 module.exports = {
   createCashDistribution,
   getAllCashDistributions,
@@ -322,4 +421,5 @@ module.exports = {
   updateCashDistribution,
   cancelCashDistribution,
   getCashDistributionSummary,
+  settleCashDistribution,
 };
