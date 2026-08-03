@@ -1,6 +1,7 @@
 const PAYMENT_MODE = {
   CASH: "cash",
   BANK: "bank",
+  UPI: "upi",
 };
 
 const INCOME_CATEGORY = {
