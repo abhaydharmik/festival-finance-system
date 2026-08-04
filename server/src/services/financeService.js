@@ -1,4 +1,8 @@
+const {
+  DISTRIBUTION_STATUS,
+} = require("../constants/cashDistributionConstants");
 const { PAYMENT_MODE } = require("../constants/incomeConstants");
+const CashDistribution = require("../models/CashDistribution");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
 
@@ -170,8 +174,78 @@ const getIncomeBreakdown = async () => {
   );
 };
 
+// Get Cash Distribution Metrics
+const getDistributionMetrics = async () => {
+  const summary = await CashDistribution.aggregate([
+    {
+      $match: {
+        isCancelled: false,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        cashDistributed: {
+          $sum: "$amountGiven",
+        },
+
+        cashReturned: {
+          $sum: "$amountReturned",
+        },
+
+        pendingSettlements: {
+          $sum: {
+            $cond: [{ $eq: ["$status", DISTRIBUTION_STATUS.PENDING] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const result = summary[0] || {
+    cashDistributed: 0,
+    cashReturned: 0,
+    pendingSettlements: 0,
+  };
+
+  return {
+    ...result,
+    cashWithVolunteers: result.cashDistributed - result.cashReturned,
+  };
+};
+
+// Get Recent Activity
+
+const getRecentActivity = async () => {
+  const [income, expense, distribution] = await Promise.all([
+    Income.find({ isCancelled: false })
+      .select("donorName amount paymentMode createdAt")
+      .sort({ createdAt: -1 })
+      .limit(5),
+
+    Expense.find({ isCancelled: false })
+      .select("description amount category createdAt")
+      .sort({ createdAt: -1 })
+      .limit(5),
+
+    CashDistribution.find({ isCancelled: false })
+      .populate("volunteerId", "name")
+      .select("distributionNumber amountGiven volunteerId createdAt")
+      .sort({ createdAt: -1 })
+      .limit(5),
+  ]);
+
+  return {
+    income,
+    expense,
+    distribution,
+  };
+};
+
 module.exports = {
   getOverallBalance,
   getTodaySummary,
   getIncomeBreakdown,
+  getDistributionMetrics,
+  getRecentActivity,
 };
