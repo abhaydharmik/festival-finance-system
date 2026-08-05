@@ -42,6 +42,7 @@ const expenseSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 500,
     },
 
     amount: {
@@ -77,12 +78,14 @@ const expenseSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+      maxlength: 50,
     },
 
     remarks: {
       type: String,
       trim: true,
       default: "",
+      maxlength: 500,
     },
 
     status: {
@@ -116,6 +119,9 @@ const expenseSchema = new mongoose.Schema(
 );
 
 expenseSchema.index({ festivalId: 1 });
+expenseSchema.index({
+  distributionId: 1,
+});
 expenseSchema.index({ category: 1 });
 expenseSchema.index({ vendorName: 1 });
 expenseSchema.index({ createdAt: -1 });

@@ -66,7 +66,7 @@ const getFestivalById = async (festivalId) => {
   return festival;
 };
 
-const updatefestival = async (festivalId, festivalData) => {
+const updateFestival = async (festivalId, festivalData) => {
   const festival = await Festival.findById(festivalId);
 
   if (!festival || !festival.isActive) {
@@ -96,6 +96,9 @@ const updatefestival = async (festivalId, festivalData) => {
       throw new ApiError(400, "Another festival is already active");
     }
   }
+
+  delete festivalData.createdBy;
+  delete festivalData.isActive;
 
   Object.assign(festival, festivalData);
 
@@ -131,6 +134,6 @@ module.exports = {
   getAllFestivals,
   getActiveFestival,
   getFestivalById,
-  updatefestival,
+  updateFestival,
   archiveFestival,
 };

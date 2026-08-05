@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const {
   DISTRIBUTION_PURPOSE,
 } = require("../constants/cashDistributionConstants");
@@ -6,12 +7,12 @@ const ApiError = require("../utils/ApiError");
 const validateCashDistribution = (data) => {
   const { festivalId, volunteerId, amountGiven, purpose } = data;
 
-  if (!festivalId) {
-    throw new ApiError(400, "Festival is required");
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
   }
 
-  if (!volunteerId) {
-    throw new ApiError(400, "Volunteer is required");
+  if (!mongoose.Types.ObjectId.isValid(volunteerId)) {
+    throw new ApiError(400, "Invalid volunteer ID");
   }
 
   if (typeof amountGiven !== "number" || amountGiven <= 0) {

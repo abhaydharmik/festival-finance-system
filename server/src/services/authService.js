@@ -58,7 +58,14 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   if (!isMatch) {
     throw new ApiError(401, "Current password is incorrect.");
   }
-
+  
+  if (currentPassword === newPassword) {
+    throw new ApiError(
+      400,
+      "New password must be different from current password",
+    );
+  }
+  
   user.password = newPassword;
 
   // Password will be hashed automatically by pre("save")

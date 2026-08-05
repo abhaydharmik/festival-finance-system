@@ -10,7 +10,7 @@ const generateReceiptNumber = async (festivalCode) => {
     },
   );
 
-  const receiptNumber = `${festivalCode} - ${String(counter.incomeSequence).padStart(4, "0")}`;
+  const receiptNumber = `${festivalCode}-REC-${String(counter.incomeSequence).padStart(5, "0")}`;
 
   return receiptNumber;
 };

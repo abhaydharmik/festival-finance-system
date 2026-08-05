@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: Object.values(USER_ROLES),
-      default: "viewer",
+      default: USER_ROLES.VIEWER,
     },
 
     isActive: {

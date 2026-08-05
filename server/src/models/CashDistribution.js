@@ -32,10 +32,10 @@ const cashDistributionSchema = new mongoose.Schema(
     },
 
     amountReturned: {
-      type:Number,
+      type: Number,
       default: 0,
-      min: [0, "Returned amount cannot be negative "]
-    },  
+      min: [0, "Returned amount cannot be negative "],
+    },
 
     returnedDate: {
       type: Date,
@@ -67,6 +67,7 @@ const cashDistributionSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+      maxlength: 500,
     },
 
     status: {
@@ -83,6 +84,7 @@ const cashDistributionSchema = new mongoose.Schema(
     cancelReason: {
       type: String,
       trim: true,
+      maxlength: 200,
     },
 
     cancelledBy: {
@@ -99,9 +101,11 @@ const cashDistributionSchema = new mongoose.Schema(
   },
 );
 
-cashDistributionSchema.index({ festivalId: 1 });
-cashDistributionSchema.index({ volunteerId: 1 });
-cashDistributionSchema.index({ status: 1 });
+cashDistributionSchema.index({
+  festivalId: 1,
+  volunteerId: 1,
+  status: 1,
+});
 cashDistributionSchema.index({ distributionDate: -1 });
 
 module.exports = mongoose.model("CashDistribution", cashDistributionSchema);

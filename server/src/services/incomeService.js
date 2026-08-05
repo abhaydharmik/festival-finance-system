@@ -3,6 +3,7 @@ const Festival = require("../models/Festival");
 const Income = require("../models/Income");
 const ApiError = require("../utils/ApiError");
 const generateReceiptNumber = require("../utils/generateReceiptNumber");
+const { validateIncome } = require("../validators/incomeValidator");
 
 // Create Income
 const createIncome = async (incomeData, userId) => {
@@ -59,7 +60,10 @@ const getAllIncome = async (query) => {
     filter.paymentMode = paymentMode;
   }
 
-  const skip = (page - 1) * limit;
+  const pageNumber = Math.max(1, Number(page) || 1);
+  const limitNumber = Math.max(1, Number(limit) || 10);
+
+  const skip = (pageNumber - 1) * limitNumber;
 
   const [income, total] = await Promise.all([
     Income.find(filter)
@@ -118,6 +122,8 @@ const updateIncome = async (incomeId, updateData) => {
   delete updateData.cancelledBy;
   delete updateData.cancelledAt;
 
+  validateIncome(updateData);
+
   Object.assign(income, updateData);
 
   await income.save();
@@ -141,6 +147,10 @@ const cancelIncome = async (incomeId, cancelReason, userId) => {
 
   if (!income) {
     throw new ApiError(404, "Income record not found");
+  }
+
+  if (!cancelReason?.trim()) {
+    throw new ApiError(400, "Cancel reason is required");
   }
 
   if (income.isCancelled) {

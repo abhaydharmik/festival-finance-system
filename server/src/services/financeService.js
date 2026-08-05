@@ -79,7 +79,7 @@ const getTodaySummary = async () => {
           totalIncome: {
             $sum: "$amount",
           },
-          donation: {
+          donations: {
             $sum: 1,
           },
         },
@@ -102,7 +102,7 @@ const getTodaySummary = async () => {
           totalExpense: {
             $sum: "$amount",
           },
-          expense: {
+          expenses: {
             $sum: 1,
           },
         },
@@ -176,41 +176,58 @@ const getIncomeBreakdown = async () => {
 
 // Get Cash Distribution Metrics
 const getDistributionMetrics = async () => {
-  const summary = await CashDistribution.aggregate([
-    {
-      $match: {
-        isCancelled: false,
+  const [distributionSummary, expenseSummary] = await Promise.all([
+    CashDistribution.aggregate([
+      {
+        $match: {
+          isCancelled: false,
+        },
       },
-    },
-    {
-      $group: {
-        _id: null,
-        cashDistributed: {
-          $sum: "$amountGiven",
-        },
-
-        cashReturned: {
-          $sum: "$amountReturned",
-        },
-
-        pendingSettlements: {
-          $sum: {
-            $cond: [{ $eq: ["$status", DISTRIBUTION_STATUS.PENDING] }, 1, 0],
+      {
+        $group: {
+          _id: null,
+          cashDistributed: { $sum: "$amountGiven" },
+          cashReturned: { $sum: "$amountReturned" },
+          pendingSettlements: {
+            $sum: {
+              $cond: [{ $eq: ["$status", DISTRIBUTION_STATUS.PENDING] }, 1, 0],
+            },
           },
         },
       },
-    },
+    ]),
+
+    Expense.aggregate([
+      {
+        $match: {
+          isCancelled: false,
+          distributionId: { $exists: true },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          distributionExpense: {
+            $sum: "$amount",
+          },
+        },
+      },
+    ]),
   ]);
 
-  const result = summary[0] || {
+  const result = distributionSummary[0] || {
     cashDistributed: 0,
     cashReturned: 0,
     pendingSettlements: 0,
   };
 
+  const distributionExpense = expenseSummary[0]?.distributionExpense || 0;
+
   return {
     ...result,
-    cashWithVolunteers: result.cashDistributed - result.cashReturned,
+    distributionExpense,
+    cashWithVolunteers:
+      result.cashDistributed - result.cashReturned - distributionExpense,
   };
 };
 

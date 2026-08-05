@@ -21,11 +21,13 @@ const incomeSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
       maxlength: 100,
     },
     mobile: {
       type: String,
       trim: true,
+      match: [/^[6-9]\d{9}$/, "Invalid mobile number"],
     },
     amount: {
       type: Number,
@@ -56,6 +58,7 @@ const incomeSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+      maxlength: 500,
     },
     isCancelled: {
       type: Boolean,

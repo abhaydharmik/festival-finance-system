@@ -1,25 +1,24 @@
 const authorize = (...roles) => {
-    return (req, res, next) => {
-
-        // req.user is added by protect middleware
-        if(!req.user){
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized",
-            })
-        }
-
-        if(!roles.includes(req.user.role)){
-            return res.status(403).json({
-                success: false,
-                message: "Access denied",
-            })
-        }
-
-        next()
+  return (req, res, next) => {
+    // req.user is added by protect middleware
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
-}
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    next();
+  };
+};
 
 module.exports = {
-    authorize,
-}
+  authorize,
+};

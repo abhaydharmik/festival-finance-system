@@ -1,4 +1,5 @@
 const { EXPENSE_STATUS } = require("../constants/expenseConstants");
+const { FESTIVAL_STATUS } = require("../constants/festivalConstants");
 const Expense = require("../models/Expense");
 const Festival = require("../models/Festival");
 const ApiError = require("../utils/ApiError");
@@ -18,7 +19,7 @@ const createExpense = async (expenseData, userId) => {
     throw new ApiError(404, "Festival not found");
   }
 
-  if (festival.status !== "active") {
+  if (festival.status !== FESTIVAL_STATUS.ACTIVE) {
     throw new ApiError(400, "Expense can only be added to an active festival");
   }
 
@@ -53,7 +54,9 @@ const getAllExpenses = async (query = {}) => {
     endDate,
   } = query;
 
-  const filter = {};
+  const filter = {
+    isCancelled: false,
+  };
 
   if (festivalId) filter.festivalId = festivalId;
   if (category) filter.category = category;
@@ -103,7 +106,10 @@ const getAllExpenses = async (query = {}) => {
     }
   }
 
-  const skip = (page - 1) * limit;
+  const pageNumber = Math.max(1, Number(page) || 1);
+  const limitNumber = Math.max(1, Number(limit) || 10);
+
+  const skip = (pageNumber - 1) * limitNumber;
 
   const [expenses, total] = await Promise.all([
     Expense.find(filter)

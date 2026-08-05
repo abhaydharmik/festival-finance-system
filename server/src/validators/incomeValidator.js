@@ -1,10 +1,15 @@
+const mongoose = require("mongoose");
+const {
+  PAYMENT_MODE,
+  INCOME_CATEGORY,
+} = require("../constants/incomeConstants");
 const ApiError = require("../utils/ApiError");
 
 const validateIncome = (data) => {
   const { festivalId, donorName, amount, paymentMode, category } = data;
 
-  if (!festivalId) {
-    throw new ApiError(400, "Festival is required");
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
   }
 
   if (!donorName?.trim()) {

@@ -5,7 +5,7 @@ const {
   getFestivalById,
   getActiveFestival,
   createFestival,
-  updatefestival,
+  updateFestival,
   archiveFestival,
 } = require("../controllers/festivalController");
 const { authorize } = require("../middleware/roleMiddleware");
@@ -25,7 +25,7 @@ router.get("/:id", protect, getFestivalById);
 router.post("/", protect, authorize("admin"), createFestival);
 
 // Update festival
-router.put("/:id", protect, authorize("admin"), updatefestival);
+router.put("/:id", protect, authorize("admin"), updateFestival);
 
 // Archive festival
 router.patch("/:id/archive", protect, authorize("admin"), archiveFestival);

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const {
   PAYMENT_MODE,
   EXPENSE_CATEGORY,
@@ -5,10 +6,17 @@ const {
 const ApiError = require("../utils/ApiError");
 
 const validateExpense = (data) => {
-  const { festivalId, category, description, amount, paymentMode } = data;
+  const { festivalId, distributionId, category, description, amount, paymentMode } = data;
 
-  if (!festivalId) {
-    throw new ApiError(400, "Festival is required");
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
+  }
+
+  if (
+    data.distributionId &&
+    !mongoose.Types.ObjectId.isValid(data.distributionId)
+  ) {
+    throw new ApiError(400, "Invalid distribution ID");
   }
 
   if (!Object.values(EXPENSE_CATEGORY).includes(category)) {

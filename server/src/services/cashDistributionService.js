@@ -200,6 +200,7 @@ const updateCashDistribution = async (distributionId, updateData) => {
   delete updateData.givenBy;
   delete updateData.status;
 
+  delete updateData.amountGiven;
   delete updateData.isCancelled;
   delete updateData.cancelReason;
   delete updateData.cancelledBy;
@@ -355,30 +356,17 @@ const settleCashDistribution = async (
 
   const totalExpense = expenseSummary[0]?.totalExpense || 0;
 
-  const remainingCash =
-    distribution.amountGiven - totalExpense - amountReturned;
+  const returnedAmount = Number(amountReturned);
 
-  console.log({
-    amountGiven: distribution.amountGiven,
-    totalExpense,
-    amountReturned,
-    expectedReturn: distribution.amountGiven - totalExpense,
-    remainingCash,
-  });
-
-  if (amountReturned < 0) {
+  if (returnedAmount < 0) {
     throw new ApiError(400, "Returned amount cannot be negative");
   }
+  const expectedReturn = distribution.amountGiven - totalExpense;
+  const remainingCash = expectedReturn - returnedAmount;
 
   if (remainingCash < 0) {
     throw new ApiError(400, "Returned amount exceeds remaining cash");
   }
-
-  const isSettled = remainingCash === 0;
-
-  const expectedReturn = distribution.amountGiven - totalExpense;
-
-  const returnedAmount = Number(amountReturned);
 
   if (returnedAmount !== expectedReturn) {
     throw new ApiError(
@@ -386,6 +374,8 @@ const settleCashDistribution = async (
       `Returned amount must be exactly ₹${expectedReturn}`,
     );
   }
+
+  const isSettled = remainingCash === 0;
 
   distribution.amountReturned = returnedAmount;
   distribution.returnedDate = new Date();
@@ -407,7 +397,8 @@ const settleCashDistribution = async (
     settlement: {
       amountGiven: distribution.amountGiven,
       totalExpense,
-      amountReturned,
+      amountReturned: returnedAmount,
+      expectedReturn,
       remainingCash,
       status: updatedDistribution.status,
     },

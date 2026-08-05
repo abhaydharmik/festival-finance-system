@@ -44,10 +44,10 @@ const getFestivalById = asyncHandler(async (req, res) => {
 });
 
 // Update Festival
-const updatefestival = asyncHandler(async (req, res) => {
+const updateFestival = asyncHandler(async (req, res) => {
   validateFestival(req.body);
 
-  const festival = await festivalService.updatefestival(
+  const festival = await festivalService.updateFestival(
     req.params.id,
     req.body,
   );
@@ -71,6 +71,6 @@ module.exports = {
   getAllFestivals,
   getActiveFestival,
   getFestivalById,
-  updatefestival,
+  updateFestival,
   archiveFestival,
 };

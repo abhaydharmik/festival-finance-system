@@ -9,6 +9,7 @@ const festivalSchema = new mongoose.Schema(
       unique: true,
       uppercase: true,
       trim: true,
+      maxlength: 20,
     },
     name: {
       type: String,
