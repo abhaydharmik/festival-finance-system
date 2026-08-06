@@ -6,6 +6,18 @@ const CashDistribution = require("../models/CashDistribution");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
 
+const getTodayRange = () => {
+  const today = new Date();
+
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  return { startOfDay, endOfDay };
+};
+
 // Get Overall Balance
 const getOverallBalance = async () => {
   const [income, expense] = await Promise.all([
@@ -54,13 +66,7 @@ const getOverallBalance = async () => {
 
 // Get Today Summary
 const getTodaySummary = async () => {
-  const today = new Date();
-
-  const startOfDay = new Date(today);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const endOfDay = new Date(today);
-  endOfDay.setHours(23, 59, 59, 999);
+  const { startOfDay, endOfDay } = getTodayRange();
 
   const [income, expense] = await Promise.all([
     Income.aggregate([
@@ -259,10 +265,189 @@ const getRecentActivity = async () => {
   };
 };
 
+// Get Today's Income Breakdown
+const getTodayIncomeBreakdown = async () => {
+  const { startOfDay, endOfDay } = getTodayRange();
+
+  const summary = await Income.aggregate([
+    {
+      $match: {
+        isCancelled: false,
+        createdAt: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+
+        cashIncome: {
+          $sum: {
+            $cond: [{ $eq: ["$paymentMode", PAYMENT_MODE.CASH] }, "$amount", 0],
+          },
+        },
+
+        onlineIncome: {
+          $sum: {
+            $cond: [
+              {
+                $in: ["$paymentMode", [PAYMENT_MODE.UPI, PAYMENT_MODE.BANK]],
+              },
+              "$amount",
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  return (
+    summary[0] || {
+      cashIncome: 0,
+      onlineIncome: 0,
+    }
+  );
+};
+
+// Get Today's Expense Summary
+const getTodayExpenseSummary = async () => {
+  const { startOfDay, endOfDay } = getTodayRange();
+
+  const summary = await Expense.aggregate([
+    {
+      $match: {
+        isCancelled: false,
+        createdAt: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+
+        totalExpense: {
+          $sum: "$amount",
+        },
+      },
+    },
+  ]);
+
+  return (
+    summary[0] || {
+      totalExpense: 0,
+    }
+  );
+};
+
+// Get Today's Distribution Summary
+const getTodayDistributionSummary = async () => {
+  const { startOfDay, endOfDay } = getTodayRange();
+
+  const [distributionSummary, expenseSummary] = await Promise.all([
+    CashDistribution.aggregate([
+      {
+        $match: {
+          isCancelled: false,
+          createdAt: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          cashDistributed: {
+            $sum: "$amountGiven",
+          },
+
+          cashReturned: {
+            $sum: "$amountReturned",
+          },
+        },
+      },
+    ]),
+
+    Expense.aggregate([
+      {
+        $match: {
+          isCancelled: false,
+          distributionId: {
+            $exists: true,
+          },
+          createdAt: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          distributionExpense: {
+            $sum: "$amount",
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const distribution = distributionSummary[0] || {
+    cashDistributed: 0,
+    cashReturned: 0,
+  };
+
+  const distributionExpense = expenseSummary[0]?.distributionExpense || 0;
+
+  return {
+    cashDistributed: distribution.cashDistributed,
+    cashReturned: distribution.cashReturned,
+    cashWithVolunteers:
+      distribution.cashDistributed -
+      distribution.cashReturned -
+      distributionExpense,
+  };
+};
+
+// Get Closing Summary
+const getClosingSummary = async () => {
+  const [income, expense, distribution] = await Promise.all([
+    getTodayIncomeBreakdown(),
+    getTodayExpenseSummary(),
+    getTodayDistributionSummary(),
+  ]);
+
+  const totalIncome = income.cashIncome + income.onlineIncome;
+
+  return {
+    cashIncome: income.cashIncome,
+    onlineIncome: income.onlineIncome,
+    totalIncome,
+
+    totalExpense: expense.totalExpense,
+
+    cashDistributed: distribution.cashDistributed,
+    cashReturned: distribution.cashReturned,
+
+    cashWithVolunteers: distribution.cashWithVolunteers,
+  };
+};
+
 module.exports = {
   getOverallBalance,
   getTodaySummary,
   getIncomeBreakdown,
   getDistributionMetrics,
   getRecentActivity,
+  getTodayIncomeBreakdown,
+  getTodayExpenseSummary,
+  getTodayDistributionSummary,
+  getClosingSummary,
 };
