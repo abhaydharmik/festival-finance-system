@@ -3,6 +3,7 @@ const { FESTIVAL_STATUS } = require("../constants/festivalConstants");
 const Expense = require("../models/Expense");
 const Festival = require("../models/Festival");
 const ApiError = require("../utils/ApiError");
+const checkDailyTallyLock = require("../utils/checkDailyTallyLock");
 const generateVoucherNumber = require("../utils/generateVoucherNumber");
 
 const { validateExpense } = require("../validators/expenseValidator");
@@ -159,6 +160,8 @@ const updateExpense = async (expenseId, updateData) => {
     throw new ApiError(404, "Expense not found");
   }
 
+  await checkDailyTallyLock(expense.festivalId, expense.expenseDate);
+
   // Prevent updating cancelled expense
   if (expense.isCancelled) {
     throw new ApiError(400, "Cancelled expense cannot be updated");
@@ -190,6 +193,8 @@ const cancelExpense = async (expenseId, cancelReason, userId) => {
   if (!expense) {
     throw new ApiError(404, "Expense not found");
   }
+
+  await checkDailyTallyLock(expense.festivalId, expense.expenseDate);
 
   if (expense.isCancelled) {
     throw new ApiError(400, "Expense is already cancelled");

@@ -2,6 +2,7 @@ const { FESTIVAL_STATUS } = require("../constants/festivalConstants");
 const Festival = require("../models/Festival");
 const Income = require("../models/Income");
 const ApiError = require("../utils/ApiError");
+const checkDailyTallyLock = require("../utils/checkDailyTallyLock");
 const generateReceiptNumber = require("../utils/generateReceiptNumber");
 const { validateIncome } = require("../validators/incomeValidator");
 
@@ -108,6 +109,8 @@ const updateIncome = async (incomeId, updateData) => {
     throw new ApiError(404, "Income record not found");
   }
 
+  await checkDailyTallyLock(income.festivalId, income.createdAt);
+
   // Prevent updating cancelled receipts
   if (income.isCancelled) {
     throw new ApiError(400, "Cancelled receipt cannot be updated");
@@ -148,6 +151,8 @@ const cancelIncome = async (incomeId, cancelReason, userId) => {
   if (!income) {
     throw new ApiError(404, "Income record not found");
   }
+
+  await checkDailyTallyLock(income.festivalId, income.createdAt);
 
   if (!cancelReason?.trim()) {
     throw new ApiError(400, "Cancel reason is required");

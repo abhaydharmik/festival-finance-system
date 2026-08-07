@@ -12,6 +12,7 @@ const {
 const generateDistributionNumber = require("../utils/generateDistributionNumber");
 const { USER_ROLES } = require("../constants/userConstants");
 const Expense = require("../models/Expense");
+const checkDailyTallyLock = require("../utils/checkDailyTallyLock");
 
 // Create Cash Distribution
 
@@ -185,6 +186,11 @@ const updateCashDistribution = async (distributionId, updateData) => {
     throw new ApiError(404, "Cash distribution not found");
   }
 
+  await checkDailyTallyLock(
+    distribution.festivalId,
+    distribution.distributionDate,
+  );
+
   if (distribution.isCancelled) {
     throw new ApiError(400, "Cancelled distribution cannot be updated");
   }
@@ -223,6 +229,15 @@ const cancelCashDistribution = async (distributionId, cancelReason, userId) => {
 
   if (!distribution) {
     throw new ApiError(404, "Cash distribution not found");
+  }
+
+  await checkDailyTallyLock(
+    distribution.festivalId,
+    distribution.distributionDate,
+  );
+
+  if (!cancelReason?.trim()) {
+    throw new ApiError(400, "Cancel reason is required");
   }
 
   if (distribution.isCancelled) {
@@ -328,6 +343,11 @@ const settleCashDistribution = async (
   if (!distribution) {
     throw new ApiError(404, "Cash distribution not found");
   }
+
+  await checkDailyTallyLock(
+    distribution.festivalId,
+    distribution.distributionDate,
+  );
 
   if (distribution.isCancelled) {
     throw new ApiError(400, "Cancelled distribution cannot be settled");

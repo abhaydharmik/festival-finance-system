@@ -131,6 +131,7 @@ const dailyTallySchema = new mongoose.Schema(
     reopenReason: {
       type: String,
       trim: true,
+      default: "",
       maxlength: 500,
     },
 
@@ -158,6 +159,12 @@ dailyTallySchema.index(
 // Faster history
 dailyTallySchema.index({
   tallyDate: -1,
+});
+dailyTallySchema.index({
+  status: 1,
+});
+dailyTallySchema.index({
+  isLocked: 1,
 });
 
 module.exports = mongoose.model("DailyTally", dailyTallySchema);
