@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const {
-  PAYMENT_MODE,
+  INCOME_PAYMENT_MODE,
   INCOME_CATEGORY,
 } = require("../constants/incomeConstants");
 
@@ -36,7 +36,7 @@ const incomeSchema = new mongoose.Schema(
     },
     paymentMode: {
       type: String,
-      enum: Object.values(PAYMENT_MODE),
+      enum: Object.values(INCOME_PAYMENT_MODE),
       required: true,
     },
     category: {

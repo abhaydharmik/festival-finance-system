@@ -1,12 +1,19 @@
 const mongoose = require("mongoose");
 const {
-  PAYMENT_MODE,
+  EXPENSE_PAYMENT_MODE,
   EXPENSE_CATEGORY,
 } = require("../constants/expenseConstants");
 const ApiError = require("../utils/ApiError");
 
 const validateExpense = (data) => {
-  const { festivalId, distributionId, category, description, amount, paymentMode } = data;
+  const {
+    festivalId,
+    distributionId,
+    category,
+    description,
+    amount,
+    paymentMode,
+  } = data;
 
   if (!mongoose.Types.ObjectId.isValid(festivalId)) {
     throw new ApiError(400, "Invalid festival ID");

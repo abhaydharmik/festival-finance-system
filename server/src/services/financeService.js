@@ -1,7 +1,7 @@
 const {
   DISTRIBUTION_STATUS,
 } = require("../constants/cashDistributionConstants");
-const { PAYMENT_MODE } = require("../constants/incomeConstants");
+const { INCOME_PAYMENT_MODE } = require("../constants/incomeConstants");
 const CashDistribution = require("../models/CashDistribution");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
@@ -144,7 +144,7 @@ const getIncomeBreakdown = async () => {
           $sum: {
             $cond: [
               {
-                $eq: ["$paymentMode", PAYMENT_MODE.CASH],
+                $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH],
               },
               "$amount",
               0,
@@ -156,7 +156,10 @@ const getIncomeBreakdown = async () => {
           $sum: {
             $cond: [
               {
-                $in: ["$paymentMode", [PAYMENT_MODE.BANK, PAYMENT_MODE.UPI]],
+                $in: [
+                  "$paymentMode",
+                  [INCOME_PAYMENT_MODE.BANK, INCOME_PAYMENT_MODE.UPI],
+                ],
               },
               "$amount",
               0,
@@ -285,7 +288,11 @@ const getTodayIncomeBreakdown = async () => {
 
         cashIncome: {
           $sum: {
-            $cond: [{ $eq: ["$paymentMode", PAYMENT_MODE.CASH] }, "$amount", 0],
+            $cond: [
+              { $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH] },
+              "$amount",
+              0,
+            ],
           },
         },
 
@@ -293,7 +300,10 @@ const getTodayIncomeBreakdown = async () => {
           $sum: {
             $cond: [
               {
-                $in: ["$paymentMode", [PAYMENT_MODE.UPI, PAYMENT_MODE.BANK]],
+                $in: [
+                  "$paymentMode",
+                  [INCOME_PAYMENT_MODE.UPI, INCOME_PAYMENT_MODE.BANK],
+                ],
               },
               "$amount",
               0,

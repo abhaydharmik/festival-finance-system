@@ -1,4 +1,17 @@
+const mongoose = require("mongoose");
+
 const ApiError = require("../utils/ApiError");
+
+const {
+  INCOME_PAYMENT_MODE,
+  INCOME_CATEGORY,
+} = require("../constants/incomeConstants");
+
+const {
+  EXPENSE_PAYMENT_MODE,
+  EXPENSE_CATEGORY,
+  EXPENSE_STATUS,
+} = require("../constants/expenseConstants");
 
 const validateReportFilters = (data = {}) => {
   const {
@@ -31,28 +44,42 @@ const validateReportFilters = (data = {}) => {
     }
   }
 
-  // Validate festival ID
-  if (festivalId && typeof festivalId !== "string") {
+  // Validate Festival ID
+  if (festivalId && !mongoose.Types.ObjectId.isValid(festivalId)) {
     throw new ApiError(400, "Invalid festival ID");
   }
 
-  // Validate volunteer ID
-  if (volunteerId && typeof volunteerId !== "string") {
+  // Validate Volunteer ID
+  if (volunteerId && !mongoose.Types.ObjectId.isValid(volunteerId)) {
     throw new ApiError(400, "Invalid volunteer ID");
   }
 
-  // Validate payment mode
-  if (paymentMode && typeof paymentMode !== "string") {
+  // Validate Payment Mode
+  const validPaymentModes = [
+    ...new Set([
+      ...Object.values(INCOME_PAYMENT_MODE),
+      ...Object.values(EXPENSE_PAYMENT_MODE),
+    ]),
+  ];
+
+  if (paymentMode && !validPaymentModes.includes(paymentMode)) {
     throw new ApiError(400, "Invalid payment mode");
   }
 
-  // Validate category
-  if (category && typeof category !== "string") {
+  // Validate Category
+  const validCategories = [
+    ...new Set([
+      ...Object.values(INCOME_CATEGORY),
+      ...Object.values(EXPENSE_CATEGORY),
+    ]),
+  ];
+
+  if (category && !validCategories.includes(category)) {
     throw new ApiError(400, "Invalid category");
   }
 
-  //   Validate status
-  if (status && typeof status !== "string") {
+  // Validate Expense Status
+  if (status && !Object.values(EXPENSE_STATUS).includes(status)) {
     throw new ApiError(400, "Invalid status");
   }
 };

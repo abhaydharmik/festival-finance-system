@@ -14,6 +14,20 @@ const getIncomeReport = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, report, "Income report generated successfully"));
 });
 
+// Expense Report
+const getExpenseReport = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateExpenseReport(req.query);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, report, "Expense report generated successfully"),
+    );
+});
+
 module.exports = {
   getIncomeReport,
+  getExpenseReport,
 };

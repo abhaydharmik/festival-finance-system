@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const {
-  PAYMENT_MODE,
+  INCOME_PAYMENT_MODE,
   INCOME_CATEGORY,
 } = require("../constants/incomeConstants");
 const ApiError = require("../utils/ApiError");
@@ -20,7 +20,7 @@ const validateIncome = (data) => {
     throw new ApiError(400, "Amount must be greater than zero");
   }
 
-  if (!Object.values(PAYMENT_MODE).includes(paymentMode)) {
+  if (!Object.values(INCOME_PAYMENT_MODE).includes(paymentMode)) {
     throw new ApiError(400, "Invalid payment mode");
   }
 

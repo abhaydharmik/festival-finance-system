@@ -1,10 +1,15 @@
 const mongoose = require("mongoose");
-const { PAYMENT_MODE } = require("../constants/incomeConstants");
+const { INCOME_PAYMENT_MODE } = require("../constants/incomeConstants");
 const Income = require("../models/Income");
+const Expense = require("../models/Expense");
 const ApiError = require("../utils/ApiError");
+const { EXPENSE_PAYMENT_MODE } = require("../constants/expenseConstants");
 
 const buildDateFilter = (startDate, endDate) => {
   const dateFilter = {};
+
+  let start;
+  let end;
 
   if (startDate) {
     const start = new Date(startDate);
@@ -26,6 +31,10 @@ const buildDateFilter = (startDate, endDate) => {
 
     end.setHours(23, 59, 59, 999);
     dateFilter.$lte = end;
+  }
+
+  if (startDate && endDate && start > end) {
+    throw new ApiError(400, "Start date cannot be after end date");
   }
 
   return dateFilter;
@@ -86,7 +95,7 @@ const generateIncomeReport = async (filters = {}) => {
             $sum: {
               $cond: [
                 {
-                  $eq: ["$paymentMode", PAYMENT_MODE.CASH],
+                  $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH],
                 },
                 "$amount",
                 0,
@@ -98,7 +107,10 @@ const generateIncomeReport = async (filters = {}) => {
             $sum: {
               $cond: [
                 {
-                  $in: ["$paymentMode", [PAYMENT_MODE.UPI, PAYMENT_MODE.BANK]],
+                  $in: [
+                    "$paymentMode",
+                    [INCOME_PAYMENT_MODE.UPI, INCOME_PAYMENT_MODE.BANK],
+                  ],
                 },
                 "$amount",
                 0,
@@ -130,6 +142,166 @@ const generateIncomeReport = async (filters = {}) => {
   };
 };
 
+// Generate Expense Report
+const generateExpenseReport = async (filters = {}) => {
+  const { festivalId, startDate, endDate, paymentMode, category, status } =
+    filters;
+
+  const match = {
+    isCancelled: false,
+  };
+
+  // Festival filter
+  if (festivalId) {
+    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+      throw new ApiError(400, "Invalid festival ID");
+    }
+
+    match.festivalId = new mongoose.Types.ObjectId(festivalId);
+  }
+
+  // Payment mode filter
+  if (paymentMode) {
+    match.paymentMode = paymentMode;
+  }
+
+  // Category filter
+  if (category) {
+    match.category = category;
+  }
+
+  // Status filter
+  if (status) {
+    match.status = status;
+  }
+
+  // Date filter
+  const dateFilter = buildDateFilter(startDate, endDate);
+
+  if (Object.keys(dateFilter).length > 0) {
+    match.expenseDate = dateFilter;
+  }
+
+  const [summary, records] = await Promise.all([
+    Expense.aggregate([
+      {
+        $match: match,
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          totalRecords: {
+            $sum: 1,
+          },
+
+          totalAmount: {
+            $sum: "$amount",
+          },
+
+          cashAmount: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.CASH],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          upiAmount: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.UPI],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          bankAmount: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.BANK],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          chequeAmount: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.CHEQUE],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          volunteerExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $ifNull: ["$distributionId", false],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          directExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $ifNull: ["$distributionId", false],
+                },
+                0,
+                "$amount",
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    Expense.find(match)
+      .populate("festivalId", "name festivalCode year")
+      .populate("distributionId", "distributionNumber amountGiven volunteerId")
+      .populate("paidBy", "name email")
+      .select(
+        "voucherNumber category vendorName description amount paymentMode referenceNumber expenseDate paidBy billNumber remarks distributionId status",
+      )
+      .sort({ expenseDate: -1 }),
+  ]);
+
+  return {
+    summary: summary[0] || {
+      totalRecords: 0,
+      totalAmount: 0,
+      cashAmount: 0,
+      upiAmount: 0,
+      bankAmount: 0,
+      chequeAmount: 0,
+      volunteerExpense: 0,
+      directExpense: 0,
+    },
+
+    records,
+  };
+};
+
 module.exports = {
   generateIncomeReport,
+  generateExpenseReport,
 };

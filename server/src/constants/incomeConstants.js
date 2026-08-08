@@ -1,4 +1,4 @@
-const PAYMENT_MODE = {
+const INCOME_PAYMENT_MODE = {
   CASH: "cash",
   BANK: "bank",
   UPI: "upi",
@@ -11,6 +11,6 @@ const INCOME_CATEGORY = {
 };
 
 module.exports = {
-  PAYMENT_MODE,
+  INCOME_PAYMENT_MODE,
   INCOME_CATEGORY,
 };

@@ -12,7 +12,7 @@ const EXPENSE_CATEGORY = {
   OTHER: "other",
 };
 
-const PAYMENT_MODE = {
+const EXPENSE_PAYMENT_MODE = {
   CASH: "cash",
   UPI: "upi",
   BANK: "bank",
@@ -26,6 +26,6 @@ const EXPENSE_STATUS = {
 
 module.exports = {
   EXPENSE_CATEGORY,
-  PAYMENT_MODE,
+  EXPENSE_PAYMENT_MODE,
   EXPENSE_STATUS,
 };
