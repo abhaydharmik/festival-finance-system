@@ -9,6 +9,7 @@ const expenseRoutes = require("./routes/expenseRoutes");
 const cashDistributionsRoutes = require("./routes/cashDistributionRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const dailyTallyRoutes = require("./routes/dailyTallyRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 const errorHandler = require("./middleware/errorMiddleware");
 
@@ -28,6 +29,7 @@ app.use("/api/expense", expenseRoutes);
 app.use("/api/cash-distributions", cashDistributionsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/daily-tally", dailyTallyRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
