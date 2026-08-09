@@ -2,8 +2,12 @@ const mongoose = require("mongoose");
 const { INCOME_PAYMENT_MODE } = require("../constants/incomeConstants");
 const Income = require("../models/Income");
 const Expense = require("../models/Expense");
+const CashDistribution = require("../models/CashDistribution");
 const ApiError = require("../utils/ApiError");
 const { EXPENSE_PAYMENT_MODE } = require("../constants/expenseConstants");
+const {
+  DISTRIBUTION_STATUS,
+} = require("../constants/cashDistributionConstants");
 
 const buildDateFilter = (startDate, endDate) => {
   const dateFilter = {};
@@ -301,7 +305,125 @@ const generateExpenseReport = async (filters = {}) => {
   };
 };
 
+// Generate Cash Distribution Report
+const generateDistributionReport = async (filters = {}) => {
+  const { festivalId, startDate, endDate, volunteerId, status } = filters;
+
+  const match = {
+    isCancelled: false,
+  };
+
+  // Festival filter
+  if (festivalId) {
+    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+      throw new ApiError(400, "Invalid festival ID");
+    }
+
+    match.festivalId = new mongoose.Types.ObjectId(festivalId);
+  }
+
+  // Volunteer filter
+  if (volunteerId) {
+    if (!mongoose.Types.ObjectId.isValid(volunteerId)) {
+      throw new ApiError(400, "Invalid volunteer ID");
+    }
+
+    match.volunteerId = new mongoose.Types.ObjectId(volunteerId);
+  }
+
+  // Status filter
+  if (status) {
+    match.status = status;
+  }
+
+  // Date filter
+  const dateFilter = buildDateFilter(startDate, endDate);
+
+  if (Object.keys(dateFilter).length > 0) {
+    match.distributionDate = dateFilter;
+  }
+
+  const [summary, records] = await Promise.all([
+    CashDistribution.aggregate([
+      {
+        $match: match,
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          totalDistributions: {
+            $sum: 1,
+          },
+
+          totalAmountGiven: {
+            $sum: "$amountGiven",
+          },
+
+          totalAmountReturned: {
+            $sum: "$amountReturned",
+          },
+
+          pendingDistributions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", DISTRIBUTION_STATUS.PENDING],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          settledDistributions: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$status", DISTRIBUTION_STATUS.SETTLED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    CashDistribution.find(match)
+      .populate("festivalId", "name festivalCode year")
+      .populate("volunteerId", "name email")
+      .populate("givenBy", "name email")
+      .populate("settledBy", "name email")
+      .select(
+        "distributionNumber volunteerId amountGiven amountReturned returnedDate purpose distributionDate givenBy settledBy remarks status",
+      )
+      .sort({ distributionDate: -1 }),
+  ]);
+
+  const result = summary[0] || {
+    totalDistributions: 0,
+    totalAmountGiven: 0,
+    totalAmountReturned: 0,
+    pendingDistributions: 0,
+    settledDistributions: 0,
+  };
+
+  return {
+    summary: {
+      ...result,
+
+      cashWithVolunteers: result.totalAmountGiven - result.totalAmountReturned,
+    },
+
+    records,
+  };
+};
+
 module.exports = {
   generateIncomeReport,
   generateExpenseReport,
+  generateDistributionReport,
 };

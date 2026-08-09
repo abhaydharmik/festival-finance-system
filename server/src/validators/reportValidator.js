@@ -13,6 +13,10 @@ const {
   EXPENSE_STATUS,
 } = require("../constants/expenseConstants");
 
+const {
+  DISTRIBUTION_STATUS,
+} = require("../constants/cashDistributionConstants");
+
 const validateReportFilters = (data = {}) => {
   const {
     startDate,
@@ -78,8 +82,15 @@ const validateReportFilters = (data = {}) => {
     throw new ApiError(400, "Invalid category");
   }
 
-  // Validate Expense Status
-  if (status && !Object.values(EXPENSE_STATUS).includes(status)) {
+  // Valid Statuses
+  const validStatuses = [
+    ...new Set([
+      ...Object.values(EXPENSE_STATUS),
+      ...Object.values(DISTRIBUTION_STATUS),
+    ]),
+  ];
+
+  if (status && !validStatuses.includes(status)) {
     throw new ApiError(400, "Invalid status");
   }
 };

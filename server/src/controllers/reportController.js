@@ -27,7 +27,25 @@ const getExpenseReport = asyncHandler(async (req, res) => {
     );
 });
 
+// Distribution Report
+const generateDistributionReport = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateDistributionReport(req.query);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        report,
+        "Cash Distribution report generated successfully",
+      ),
+    );
+});
+
 module.exports = {
   getIncomeReport,
   getExpenseReport,
+  generateDistributionReport,
 };
