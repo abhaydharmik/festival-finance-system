@@ -4,7 +4,8 @@ const { authorize } = require("../middleware/roleMiddleware");
 const {
   getIncomeReport,
   getExpenseReport,
-  generateDistributionReport,
+  getDistributionReport,
+  getVolunteerReport,
 } = require("../controllers/reportController");
 
 const router = express.Router();
@@ -15,7 +16,13 @@ router.get(
   "/distribution",
   protect,
   authorize("admin"),
-  generateDistributionReport,
+  getDistributionReport,
+);
+router.get(
+  "/volunteers",
+  protect,
+  authorize("admin"),
+  getVolunteerReport,
 );
 
 module.exports = router;

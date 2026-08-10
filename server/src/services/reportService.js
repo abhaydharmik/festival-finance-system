@@ -422,8 +422,209 @@ const generateDistributionReport = async (filters = {}) => {
   };
 };
 
+// Generate Volunteer Financial Report
+const generateVolunteerReport = async (filters = {}) => {
+  const { festivalId, startDate, endDate, volunteerId } = filters;
+
+  const distributionMatch = {
+    isCancelled: false,
+  };
+
+  // Festival filter
+  if (festivalId) {
+    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+      throw new ApiError(400, "Invalid festival ID");
+    }
+
+    distributionMatch.festivalId = new mongoose.Types.ObjectId(festivalId);
+  }
+
+  // Volunteer filter
+  if (volunteerId) {
+    if (!mongoose.Types.ObjectId.isValid(volunteerId)) {
+      throw new ApiError(400, "Invalid volunteer ID");
+    }
+
+    distributionMatch.volunteerId = new mongoose.Types.ObjectId(volunteerId);
+  }
+
+  // Date filter
+  const dateFilter = buildDateFilter(startDate, endDate);
+
+  if (Object.keys(dateFilter).length > 0) {
+    distributionMatch.distributionDate = dateFilter;
+  }
+
+  const volunteers = await CashDistribution.aggregate([
+    {
+      $match: distributionMatch,
+    },
+
+    // Group distributions by volunteer
+    {
+      $group: {
+        _id: "$volunteerId",
+
+        totalGiven: {
+          $sum: "$amountGiven",
+        },
+
+        totalReturned: {
+          $sum: "$amountReturned",
+        },
+
+        totalDistributions: {
+          $sum: 1,
+        },
+      },
+    },
+
+    // Calculate outstanding advance
+    {
+      $addFields: {
+        outstandingAmount: {
+          $subtract: ["$totalGiven", "$totalReturned"],
+        },
+      },
+    },
+
+    // Get volunteer information
+    {
+      $lookup: {
+        from: "users",
+        localField: "_id",
+        foreignField: "_id",
+        as: "volunteer",
+      },
+    },
+
+    {
+      $unwind: {
+        path: "$volunteer",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+
+    {
+      $project: {
+        _id: 0,
+
+        volunteerId: "$_id",
+
+        volunteerName: "$volunteer.name",
+
+        volunteerEmail: "$volunteer.email",
+
+        totalDistributions: 1,
+
+        totalGiven: 1,
+
+        totalReturned: 1,
+
+        outstandingAmount: 1,
+      },
+    },
+
+    {
+      $sort: {
+        outstandingAmount: -1,
+      },
+    },
+  ]);
+
+  // Get volunteer expenses
+  const expenseMatch = {
+    isCancelled: false,
+
+    distributionId: {
+      $exists: true,
+    },
+  };
+
+  if (festivalId) {
+    expenseMatch.festivalId = new mongoose.Types.ObjectId(festivalId);
+  }
+
+  if (Object.keys(dateFilter).length > 0) {
+    expenseMatch.expenseDate = dateFilter;
+  }
+
+  const volunteerExpenses = await Expense.aggregate([
+    {
+      $match: expenseMatch,
+    },
+
+    {
+      $lookup: {
+        from: "cashdistributions",
+        localField: "distributionId",
+        foreignField: "_id",
+        as: "distribution",
+      },
+    },
+
+    {
+      $unwind: "$distribution",
+    },
+
+    {
+      $match: {
+        "distribution.isCancelled": false,
+      },
+    },
+
+    {
+      $group: {
+        _id: "$distribution.volunteerId",
+
+        totalExpenses: {
+          $sum: "$amount",
+        },
+      },
+    },
+  ]);
+
+  // Map expenses by volunteer
+  const expenseMap = new Map(
+    volunteerExpenses.map((item) => [item._id.toString(), item.totalExpenses]),
+  );
+
+  // Merge distribution + expense information
+  const report = volunteers.map((volunteer) => {
+    const totalExpenses = expenseMap.get(volunteer.volunteerId.toString()) || 0;
+
+    return {
+      ...volunteer,
+
+      totalExpenses,
+
+      remainingCash: volunteer.outstandingAmount - totalExpenses,
+    };
+  });
+
+  return {
+    summary: {
+      totalVolunteers: report.length,
+
+      totalGiven: report.reduce((sum, item) => sum + item.totalGiven, 0),
+
+      totalReturned: report.reduce((sum, item) => sum + item.totalReturned, 0),
+
+      totalExpenses: report.reduce((sum, item) => sum + item.totalExpenses, 0),
+
+      totalOutstanding: report.reduce(
+        (sum, item) => sum + item.remainingCash,
+        0,
+      ),
+    },
+
+    volunteers: report,
+  };
+};
+
 module.exports = {
   generateIncomeReport,
   generateExpenseReport,
   generateDistributionReport,
+  generateVolunteerReport,
 };

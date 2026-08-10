@@ -28,7 +28,7 @@ const getExpenseReport = asyncHandler(async (req, res) => {
 });
 
 // Distribution Report
-const generateDistributionReport = asyncHandler(async (req, res) => {
+const getDistributionReport = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
   const report = await reportService.generateDistributionReport(req.query);
@@ -44,8 +44,22 @@ const generateDistributionReport = asyncHandler(async (req, res) => {
     );
 });
 
+// Volunteer Report
+const getVolunteerReport = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateVolunteerReport(req.query);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, report, "Volunteer report generated successfully"),
+    );
+});
+
 module.exports = {
   getIncomeReport,
   getExpenseReport,
-  generateDistributionReport,
+  getDistributionReport,
+  getVolunteerReport,
 };
