@@ -3,6 +3,7 @@ const { INCOME_PAYMENT_MODE } = require("../constants/incomeConstants");
 const Income = require("../models/Income");
 const Expense = require("../models/Expense");
 const CashDistribution = require("../models/CashDistribution");
+const DailyTally = require("../models/DailyTally");
 const ApiError = require("../utils/ApiError");
 const { EXPENSE_PAYMENT_MODE } = require("../constants/expenseConstants");
 const {
@@ -622,9 +623,100 @@ const generateVolunteerReport = async (filters = {}) => {
   };
 };
 
+// Generate Daily Tally Report
+const generateDailyTallyReport = async (filters = {}) => {
+  const { festivalId, startDate, endDate, status } = filters;
+
+  const match = {};
+
+  // Festival filter
+  if (festivalId) {
+    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+      throw new ApiError(400, "Invalid festival ID");
+    }
+
+    match.festivalId = new mongoose.Types.ObjectId(festivalId);
+  }
+
+  // Status filter
+  if (status) {
+    match.status = status;
+  }
+
+  // Date filter
+  const dateFilter = buildDateFilter(startDate, endDate);
+
+  if (Object.keys(dateFilter).length > 0) {
+    match.tallyDate = dateFilter;
+  }
+
+  const [summary, records] = await Promise.all([
+    DailyTally.aggregate([
+      {
+        $match: match,
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          totalDays: {
+            $sum: 1,
+          },
+
+          totalIncome: {
+            $sum: "$totalIncome",
+          },
+
+          totalExpense: {
+            $sum: "$totalExpense",
+          },
+
+          totalCashDistributed: {
+            $sum: "$cashDistributed",
+          },
+
+          totalCashReturned: {
+            $sum: "$cashReturned",
+          },
+
+          totalCashWithVolunteers: {
+            $sum: "$cashWithVolunteers",
+          },
+        },
+      },
+    ]),
+
+    DailyTally.find(match)
+      .populate("festivalId", "name festivalCode year")
+      .populate("closedBy", "name email")
+      .populate("reopenedBy", "name email")
+      .select(
+        "tallyDate openingCash cashIncome onlineIncome totalIncome totalExpense cashDistributed cashReturned cashOnHand cashWithVolunteers overallBalance notes closedBy closedAt status reopenedBy reopenedAt reopenReason",
+      )
+      .sort({
+        tallyDate: -1,
+      }),
+  ]);
+
+  return {
+    summary: summary[0] || {
+      totalDays: 0,
+      totalIncome: 0,
+      totalExpense: 0,
+      totalCashDistributed: 0,
+      totalCashReturned: 0,
+      totalCashWithVolunteers: 0,
+    },
+
+    records,
+  };
+};
+
 module.exports = {
   generateIncomeReport,
   generateExpenseReport,
   generateDistributionReport,
   generateVolunteerReport,
+  generateDailyTallyReport,
 };

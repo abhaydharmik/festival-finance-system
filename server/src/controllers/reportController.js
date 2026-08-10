@@ -57,9 +57,26 @@ const getVolunteerReport = asyncHandler(async (req, res) => {
     );
 });
 
+// Daily Tally Report
+const getDailyTallyReport = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report =
+    await reportService.generateDailyTallyReport(req.query);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      report,
+      "Daily tally report generated successfully",
+    ),
+  );
+});
+
 module.exports = {
   getIncomeReport,
   getExpenseReport,
   getDistributionReport,
   getVolunteerReport,
+  getDailyTallyReport,
 };

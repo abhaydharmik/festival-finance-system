@@ -17,6 +17,8 @@ const {
   DISTRIBUTION_STATUS,
 } = require("../constants/cashDistributionConstants");
 
+const { DAILY_TALLY_STATUS } = require("../constants/dailyTallyConstants");
+
 const validateReportFilters = (data = {}) => {
   const {
     startDate,
@@ -87,8 +89,13 @@ const validateReportFilters = (data = {}) => {
     ...new Set([
       ...Object.values(EXPENSE_STATUS),
       ...Object.values(DISTRIBUTION_STATUS),
+      ...Object.values(DAILY_TALLY_STATUS),
     ]),
   ];
+
+  if (status && !validStatuses.includes(status)) {
+    throw new ApiError(400, "Invalid status");
+  }
 
   if (status && !validStatuses.includes(status)) {
     throw new ApiError(400, "Invalid status");

@@ -6,23 +6,15 @@ const {
   getExpenseReport,
   getDistributionReport,
   getVolunteerReport,
+  getDailyTallyReport,
 } = require("../controllers/reportController");
 
 const router = express.Router();
 
 router.get("/income", protect, authorize("admin"), getIncomeReport);
 router.get("/expense", protect, authorize("admin"), getExpenseReport);
-router.get(
-  "/distribution",
-  protect,
-  authorize("admin"),
-  getDistributionReport,
-);
-router.get(
-  "/volunteers",
-  protect,
-  authorize("admin"),
-  getVolunteerReport,
-);
+router.get("/distribution", protect, authorize("admin"), getDistributionReport);
+router.get("/volunteers", protect, authorize("admin"), getVolunteerReport);
+router.get("/daily-tally", protect, authorize("admin"), getDailyTallyReport);
 
 module.exports = router;
