@@ -61,16 +61,26 @@ const getVolunteerReport = asyncHandler(async (req, res) => {
 const getDailyTallyReport = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
-  const report =
-    await reportService.generateDailyTallyReport(req.query);
+  const report = await reportService.generateDailyTallyReport(req.query);
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      report,
-      "Daily tally report generated successfully",
-    ),
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, report, "Daily tally report generated successfully"),
+    );
+});
+
+// Festival Summary Report
+const getFestivalSummary = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateFestivalSummary(req.query);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, report, "Festival summary generated successfully"),
+    );
 });
 
 module.exports = {
@@ -79,4 +89,5 @@ module.exports = {
   getDistributionReport,
   getVolunteerReport,
   getDailyTallyReport,
+  getFestivalSummary,
 };

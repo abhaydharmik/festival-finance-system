@@ -7,6 +7,7 @@ const {
   getDistributionReport,
   getVolunteerReport,
   getDailyTallyReport,
+  getFestivalSummary,
 } = require("../controllers/reportController");
 
 const router = express.Router();
@@ -16,5 +17,11 @@ router.get("/expense", protect, authorize("admin"), getExpenseReport);
 router.get("/distribution", protect, authorize("admin"), getDistributionReport);
 router.get("/volunteers", protect, authorize("admin"), getVolunteerReport);
 router.get("/daily-tally", protect, authorize("admin"), getDailyTallyReport);
+router.get(
+  "/festival-summary",
+  protect,
+  authorize("admin"),
+  getFestivalSummary,
+);
 
 module.exports = router;

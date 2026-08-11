@@ -713,10 +713,256 @@ const generateDailyTallyReport = async (filters = {}) => {
   };
 };
 
+// Generate Festival Summary Report
+const generateFestivalSummary = async (filters = {}) => {
+  const { festivalId, startDate, endDate } = filters;
+
+  const incomeMatch = {
+    isCancelled: false,
+  };
+
+  const expenseMatch = {
+    isCancelled: false,
+  };
+
+  const distributionMatch = {
+    isCancelled: false,
+  };
+
+  // Festival filter
+  if (festivalId) {
+    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+      throw new ApiError(400, "Invalid festival ID");
+    }
+
+    const objectFestivalId = new mongoose.Types.ObjectId(festivalId);
+
+    incomeMatch.festivalId = objectFestivalId;
+    expenseMatch.festivalId = objectFestivalId;
+    distributionMatch.festivalId = objectFestivalId;
+  }
+
+  // Date filters
+  const dateFilter = buildDateFilter(startDate, endDate);
+
+  if (Object.keys(dateFilter).length > 0) {
+    incomeMatch.createdAt = dateFilter;
+    expenseMatch.expenseDate = dateFilter;
+    distributionMatch.distributionDate = dateFilter;
+  }
+
+  const [income, expense, distribution] = await Promise.all([
+    Income.aggregate([
+      {
+        $match: incomeMatch,
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalRecords: {
+            $sum: 1,
+          },
+
+          totalIncome: {
+            $sum: "$amount",
+          },
+
+          cashIncome: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          onlineIncome: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$paymentMode",
+                    [INCOME_PAYMENT_MODE.UPI, INCOME_PAYMENT_MODE.BANK],
+                  ],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    Expense.aggregate([
+      {
+        $match: expenseMatch,
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalRecords: {
+            $sum: 1,
+          },
+
+          totalExpense: {
+            $sum: "$amount",
+          },
+
+          cashExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.CASH],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          upiExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.UPI],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          bankExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.BANK],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          chequeExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.CHEQUE],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          volunteerExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $ne: ["$distributionId", null],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          directExpense: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$distributionId", null],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+
+    CashDistribution.aggregate([
+      {
+        $match: distributionMatch,
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalDistributions: {
+            $sum: 1,
+          },
+
+          totalAmountGiven: {
+            $sum: "$amountGiven",
+          },
+
+          totalAmountReturned: {
+            $sum: "$amountReturned",
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const incomeSummary = income[0] || {
+    totalRecords: 0,
+    totalIncome: 0,
+    cashIncome: 0,
+    onlineIncome: 0,
+  };
+
+  const expenseSummary = expense[0] || {
+    totalRecords: 0,
+    totalExpense: 0,
+    cashExpense: 0,
+    upiExpense: 0,
+    bankExpense: 0,
+    chequeExpense: 0,
+    volunteerExpense: 0,
+    directExpense: 0,
+  };
+
+  const distributionSummary = distribution[0] || {
+    totalDistributions: 0,
+    totalAmountGiven: 0,
+    totalAmountReturned: 0,
+  };
+
+  const overallBalance =
+    incomeSummary.totalIncome - expenseSummary.totalExpense;
+
+  const cashWithVolunteers =
+    distributionSummary.totalAmountGiven -
+    distributionSummary.totalAmountReturned;
+
+  return {
+    income: incomeSummary,
+
+    expense: expenseSummary,
+
+    distribution: {
+      ...distributionSummary,
+      cashWithVolunteers,
+    },
+
+    overallBalance,
+  };
+};
+
 module.exports = {
   generateIncomeReport,
   generateExpenseReport,
   generateDistributionReport,
   generateVolunteerReport,
   generateDailyTallyReport,
+  generateFestivalSummary,
 };
