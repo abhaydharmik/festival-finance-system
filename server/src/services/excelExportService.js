@@ -215,8 +215,109 @@ const exportIncomeReport = async (report) => {
   return workbook;
 };
 
+const exportExpenseReport = async (report) => {
+  const workbook = createWorkbook();
+
+  const worksheet = workbook.addWorksheet("Expense Report");
+
+  // Title
+  worksheet.addRow(["Ganesh Mahotsav - Expense Report"]);
+
+  worksheet.mergeCells("A1:K1");
+
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  // Summary
+  worksheet.addRow(["EXPENSE SUMMARY"]);
+
+  worksheet.addRow([
+    "Total Records",
+    "Total Expense",
+    "Cash",
+    "UPI",
+    "Bank",
+    "Cheque",
+    "Volunteer Expense",
+    "Direct Expense",
+  ]);
+
+  styleHeader(worksheet.getRow(4));
+
+  const summary = report.summary;
+
+  worksheet.addRow([
+    summary.totalRecords,
+    summary.totalAmount,
+    summary.cashAmount,
+    summary.upiAmount,
+    summary.bankAmount,
+    summary.chequeAmount,
+    summary.volunteerExpense,
+    summary.directExpense,
+  ]);
+
+  for (const column of [2, 3, 4, 5, 6, 7, 8]) {
+    worksheet.getCell(5, column).numFmt = "₹#,##0.00";
+  }
+
+  worksheet.addRow([]);
+
+  // Detailed records
+  worksheet.addRow(["EXPENSE RECORDS"]);
+
+  worksheet.addRow([
+    "Voucher Number",
+    "Category",
+    "Vendor",
+    "Description",
+    "Amount",
+    "Payment Mode",
+    "Reference Number",
+    "Expense Date",
+    "Paid By",
+    "Bill Number",
+    "Distribution ID",
+  ]);
+
+  styleHeader(worksheet.getRow(8));
+
+  report.records.forEach((expense) => {
+    worksheet.addRow([
+      expense.voucherNumber,
+      expense.category,
+      expense.vendorName || "",
+      expense.description,
+      expense.amount,
+      expense.paymentMode,
+      expense.referenceNumber || "",
+      expense.expenseDate,
+      expense.paidBy?.name || "",
+      expense.billNumber || "",
+      expense.distributionId?._id || "",
+    ]);
+  });
+
+  worksheet.getColumn(5).numFmt = "₹#,##0.00";
+
+  worksheet.getColumn(8).numFmt = "dd-mm-yyyy hh:mm";
+
+  autoFitColumns(worksheet);
+
+  return workbook;
+};
+
 module.exports = {
   createExcelFilename,
   exportFestivalSummary,
   exportIncomeReport,
+  exportExpenseReport,
 };
