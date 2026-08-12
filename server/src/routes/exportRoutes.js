@@ -4,6 +4,7 @@ const {
   exportFestivalSummaryExcel,
   exportIncomeReportExcel,
   exportExpenseReportExcel,
+  exportDistributionReportExcel,
 } = require("../controllers/exportController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -21,5 +22,12 @@ router.get(
 router.get("/income", protect, authorize("admin"), exportIncomeReportExcel);
 
 router.get("/expense", protect, authorize("admin"), exportExpenseReportExcel);
+
+router.get(
+  "/distribution",
+  protect,
+  authorize("admin"),
+  exportDistributionReportExcel,
+);
 
 module.exports = router;

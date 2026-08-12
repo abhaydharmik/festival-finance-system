@@ -6,6 +6,7 @@ const {
   createExcelFilename,
   exportIncomeReport,
   exportExpenseReport,
+  exportDistributionReport,
 } = require("../services/excelExportService");
 
 const { validateReportFilters } = require("../validators/reportValidator");
@@ -73,8 +74,30 @@ const exportExpenseReportExcel = asyncHandler(async (req, res) => {
   res.end();
 });
 
+const exportDistributionReportExcel = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateDistributionReport(req.query);
+
+  const workbook = await exportDistributionReport(report);
+
+  const filename = createExcelFilename("distribution-report");
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  await workbook.xlsx.write(res);
+
+  res.end();
+});
+
 module.exports = {
   exportFestivalSummaryExcel,
   exportIncomeReportExcel,
   exportExpenseReportExcel,
+  exportDistributionReportExcel,
 };

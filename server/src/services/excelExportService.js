@@ -315,9 +315,115 @@ const exportExpenseReport = async (report) => {
   return workbook;
 };
 
+const exportDistributionReport = async (report) => {
+  const workbook = createWorkbook();
+
+  const worksheet = workbook.addWorksheet("Distribution Report");
+
+  // Title
+  worksheet.addRow(["Ganesh Mahotsav - Cash Distribution Report"]);
+
+  worksheet.mergeCells("A1:H1");
+
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  // Summary
+  worksheet.addRow(["DISTRIBUTION SUMMARY"]);
+
+  worksheet.addRow([
+    "Total Distributions",
+    "Amount Given",
+    "Amount Returned",
+    "Cash With Volunteers",
+    "Pending",
+    "Settled",
+  ]);
+
+  styleHeader(worksheet.getRow(4));
+
+  const summary = report.summary;
+
+  worksheet.addRow([
+    summary.totalDistributions,
+    summary.totalAmountGiven,
+    summary.totalAmountReturned,
+    summary.cashWithVolunteers,
+    summary.pendingDistributions,
+    summary.settledDistributions,
+  ]);
+
+  // Currency formatting
+  worksheet.getCell(5, 2).numFmt = "₹#,##0.00";
+
+  worksheet.getCell(5, 3).numFmt = "₹#,##0.00";
+
+  worksheet.getCell(5, 4).numFmt = "₹#,##0.00";
+
+  worksheet.addRow([]);
+
+  // Detailed records
+  worksheet.addRow(["DISTRIBUTION RECORDS"]);
+
+  worksheet.addRow([
+    "Distribution Number",
+    "Volunteer",
+    "Amount Given",
+    "Amount Returned",
+    "Outstanding",
+    "Purpose",
+    "Distribution Date",
+    "Status",
+    "Given By",
+    "Settled By",
+  ]);
+
+  styleHeader(worksheet.getRow(8));
+
+  report.records.forEach((distribution) => {
+    const outstanding = distribution.amountGiven - distribution.amountReturned;
+
+    worksheet.addRow([
+      distribution.distributionNumber,
+      distribution.volunteerId?.name || "",
+      distribution.amountGiven,
+      distribution.amountReturned,
+      outstanding,
+      distribution.purpose,
+      distribution.distributionDate,
+      distribution.status,
+      distribution.givenBy?.name || "",
+      distribution.settledBy?.name || "",
+    ]);
+  });
+
+  // Currency formatting
+  worksheet.getColumn(3).numFmt = "₹#,##0.00";
+
+  worksheet.getColumn(4).numFmt = "₹#,##0.00";
+
+  worksheet.getColumn(5).numFmt = "₹#,##0.00";
+
+  // Date formatting
+  worksheet.getColumn(7).numFmt = "dd-mm-yyyy hh:mm";
+
+  autoFitColumns(worksheet);
+
+  return workbook;
+};
+
 module.exports = {
   createExcelFilename,
   exportFestivalSummary,
   exportIncomeReport,
   exportExpenseReport,
+  exportDistributionReport,
 };
