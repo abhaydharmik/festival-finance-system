@@ -6,6 +6,7 @@ const {
   exportExpenseReportExcel,
   exportDistributionReportExcel,
   exportVolunteerReportExcel,
+  exportDailyTallyReportExcel,
 } = require("../controllers/exportController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -36,6 +37,13 @@ router.get(
   protect,
   authorize("admin"),
   exportVolunteerReportExcel,
+);
+
+router.get(
+  "/daily-tally",
+  protect,
+  authorize("admin"),
+  exportDailyTallyReportExcel,
 );
 
 module.exports = router;

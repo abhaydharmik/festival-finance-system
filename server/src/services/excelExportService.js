@@ -509,6 +509,108 @@ const exportVolunteerReport = async (report) => {
   return workbook;
 };
 
+const exportDailyTallyReport = async (report) => {
+  const workbook = createWorkbook();
+
+  const worksheet = workbook.addWorksheet("Daily Tally");
+
+  // Title
+  worksheet.addRow(["Ganesh Mahotsav - Daily Tally Report"]);
+
+  worksheet.mergeCells("A1:L1");
+
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  // Summary
+  worksheet.addRow(["DAILY TALLY SUMMARY"]);
+
+  worksheet.addRow([
+    "Total Days",
+    "Total Income",
+    "Total Expense",
+    "Cash Distributed",
+    "Cash Returned",
+    "Cash With Volunteers",
+  ]);
+
+  styleHeader(worksheet.getRow(4));
+
+  const summary = report.summary;
+
+  worksheet.addRow([
+    summary.totalDays,
+    summary.totalIncome,
+    summary.totalExpense,
+    summary.totalCashDistributed,
+    summary.totalCashReturned,
+    summary.totalCashWithVolunteers,
+  ]);
+
+  for (const column of [2, 3, 4, 5, 6]) {
+    worksheet.getCell(5, column).numFmt = "₹#,##0.00";
+  }
+
+  worksheet.addRow([]);
+
+  // Detailed daily records
+  worksheet.addRow(["DAILY TALLY RECORDS"]);
+
+  worksheet.addRow([
+    "Date",
+    "Opening Cash",
+    "Cash Income",
+    "Online Income",
+    "Total Income",
+    "Total Expense",
+    "Cash Distributed",
+    "Cash Returned",
+    "Cash On Hand",
+    "Cash With Volunteers",
+    "Overall Balance",
+    "Status",
+  ]);
+
+  styleHeader(worksheet.getRow(8));
+
+  report.records.forEach((tally) => {
+    worksheet.addRow([
+      tally.tallyDate,
+      tally.openingCash,
+      tally.cashIncome,
+      tally.onlineIncome,
+      tally.totalIncome,
+      tally.totalExpense,
+      tally.cashDistributed,
+      tally.cashReturned,
+      tally.cashOnHand,
+      tally.cashWithVolunteers,
+      tally.overallBalance,
+      tally.status,
+    ]);
+  });
+
+  // Date
+  worksheet.getColumn(1).numFmt = "dd-mm-yyyy";
+
+  // Currency columns
+  for (const column of [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
+    worksheet.getColumn(column).numFmt = "₹#,##0.00";
+  }
+
+  autoFitColumns(worksheet);
+
+  return workbook;
+};
+
 module.exports = {
   createExcelFilename,
   exportFestivalSummary,
@@ -516,4 +618,5 @@ module.exports = {
   exportExpenseReport,
   exportDistributionReport,
   exportVolunteerReport,
+  exportDailyTallyReport,
 };

@@ -8,6 +8,7 @@ const {
   exportExpenseReport,
   exportDistributionReport,
   exportVolunteerReport,
+  exportDailyTallyReport,
 } = require("../services/excelExportService");
 
 const { validateReportFilters } = require("../validators/reportValidator");
@@ -117,10 +118,32 @@ const exportVolunteerReportExcel = asyncHandler(async (req, res) => {
   res.end();
 });
 
+const exportDailyTallyReportExcel = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateDailyTallyReport(req.query);
+
+  const workbook = await exportDailyTallyReport(report);
+
+  const filename = createExcelFilename("daily-tally-report");
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  await workbook.xlsx.write(res);
+
+  res.end();
+});
+
 module.exports = {
   exportFestivalSummaryExcel,
   exportIncomeReportExcel,
   exportExpenseReportExcel,
   exportDistributionReportExcel,
   exportVolunteerReportExcel,
+  exportDailyTallyReportExcel,
 };
