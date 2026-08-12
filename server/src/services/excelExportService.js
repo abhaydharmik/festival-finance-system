@@ -420,10 +420,100 @@ const exportDistributionReport = async (report) => {
   return workbook;
 };
 
+const exportVolunteerReport = async (report) => {
+  const workbook = createWorkbook();
+
+  const worksheet = workbook.addWorksheet("Volunteer Report");
+
+  // Title
+  worksheet.addRow(["Ganesh Mahotsav - Volunteer Accountability Report"]);
+
+  worksheet.mergeCells("A1:F1");
+
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  // Summary
+  worksheet.addRow(["VOLUNTEER SUMMARY"]);
+
+  worksheet.addRow([
+    "Total Volunteers",
+    "Total Given",
+    "Total Returned",
+    "Total Expenses",
+    "Total Remaining",
+  ]);
+
+  styleHeader(worksheet.getRow(4));
+
+  const summary = report.summary;
+
+  worksheet.addRow([
+    summary.totalVolunteers,
+    summary.totalGiven,
+    summary.totalReturned,
+    summary.totalExpenses,
+    summary.totalOutstanding,
+  ]);
+
+  for (const column of [2, 3, 4, 5]) {
+    worksheet.getCell(5, column).numFmt = "₹#,##0.00";
+  }
+
+  worksheet.addRow([]);
+
+  // Detailed records
+  worksheet.addRow(["VOLUNTEER RECORDS"]);
+
+  worksheet.addRow([
+    "Volunteer",
+    "Email",
+    "Distributions",
+    "Amount Given",
+    "Amount Returned",
+    "Volunteer Expenses",
+    "Outstanding",
+    "Remaining / Unaccounted",
+  ]);
+
+  styleHeader(worksheet.getRow(8));
+
+  report.volunteers.forEach((volunteer) => {
+    worksheet.addRow([
+      volunteer.volunteerName || "",
+      volunteer.volunteerEmail || "",
+      volunteer.totalDistributions,
+      volunteer.totalGiven,
+      volunteer.totalReturned,
+      volunteer.totalExpenses,
+      volunteer.outstandingAmount,
+      volunteer.remainingCash,
+    ]);
+  });
+
+  // Currency formatting
+  for (const column of [4, 5, 6, 7, 8]) {
+    worksheet.getColumn(column).numFmt = "₹#,##0.00";
+  }
+
+  autoFitColumns(worksheet);
+
+  return workbook;
+};
+
 module.exports = {
   createExcelFilename,
   exportFestivalSummary,
   exportIncomeReport,
   exportExpenseReport,
   exportDistributionReport,
+  exportVolunteerReport,
 };
