@@ -7,6 +7,7 @@ const {
   exportDistributionReportExcel,
   exportVolunteerReportExcel,
   exportDailyTallyReportExcel,
+  exportFestivalSummaryPdfController,
 } = require("../controllers/exportController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -44,6 +45,13 @@ router.get(
   protect,
   authorize("admin"),
   exportDailyTallyReportExcel,
+);
+
+router.get(
+  "/pdf/festival-summary",
+  protect,
+  authorize("admin"),
+  exportFestivalSummaryPdfController,
 );
 
 module.exports = router;

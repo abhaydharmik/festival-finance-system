@@ -12,6 +12,7 @@ const {
 } = require("../services/excelExportService");
 
 const { validateReportFilters } = require("../validators/reportValidator");
+const { exportFestivalSummaryPdf } = require("../services/pdfExportService");
 
 const exportFestivalSummaryExcel = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
@@ -139,6 +140,20 @@ const exportDailyTallyReportExcel = asyncHandler(async (req, res) => {
   res.end();
 });
 
+const exportFestivalSummaryPdfController = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateFestivalSummary(req.query);
+
+  const filename = `festival-summary-${Date.now()}.pdf`;
+
+  res.setHeader("Content-Type", "application/pdf");
+
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  exportFestivalSummaryPdf(report, res);
+});
+
 module.exports = {
   exportFestivalSummaryExcel,
   exportIncomeReportExcel,
@@ -146,4 +161,5 @@ module.exports = {
   exportDistributionReportExcel,
   exportVolunteerReportExcel,
   exportDailyTallyReportExcel,
+  exportFestivalSummaryPdfController,
 };
