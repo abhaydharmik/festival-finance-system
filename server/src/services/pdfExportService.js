@@ -103,6 +103,137 @@ const exportFestivalSummaryPdf = (report, res) => {
   doc.end();
 };
 
+const exportIncomeReportPdf = (report, res) => {
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 40,
+  });
+
+  doc.pipe(res);
+
+  // =========================
+  // TITLE
+  // =========================
+
+  doc.fontSize(18).font("Helvetica-Bold").text("Ganesh Mahotsav", {
+    align: "center",
+  });
+
+  doc.fontSize(14).font("Helvetica").text("Income Report", {
+    align: "center",
+  });
+
+  doc.moveDown();
+
+  // =========================
+  // SUMMARY
+  // =========================
+
+  doc.fontSize(12).font("Helvetica-Bold").text("Income Summary");
+
+  doc.moveDown(0.5);
+
+  const summary = report.summary;
+
+  doc.font("Helvetica");
+
+  doc.text(`Total Income: Rs. ${summary.totalAmount || 0}`);
+  doc.text(`Cash Income: Rs. ${summary.cashAmount || 0}`);
+  doc.text(`Online Income: Rs. ${summary.onlineAmount || 0}`);
+  doc.text(`Total Transactions: ${summary.totalRecords || 0}`);
+
+  doc.moveDown();
+
+  // =========================
+  // CATEGORY BREAKDOWN
+  // =========================
+
+  if (report.categoryBreakdown?.length) {
+    doc.font("Helvetica-Bold").text("Category Breakdown");
+
+    doc.moveDown(0.5);
+
+    doc.font("Helvetica");
+
+    report.categoryBreakdown.forEach((item) => {
+      doc.text(`${item._id}: Rs. ${item.total || 0}`);
+    });
+
+    doc.moveDown();
+  }
+
+  // =========================
+  // PAYMENT MODE BREAKDOWN
+  // =========================
+
+  if (report.paymentModeBreakdown?.length) {
+    doc.font("Helvetica-Bold").text("Payment Mode Breakdown");
+
+    doc.moveDown(0.5);
+
+    doc.font("Helvetica");
+
+    report.paymentModeBreakdown.forEach((item) => {
+      doc.text(`${item._id}: Rs. ${item.total || 0}`);
+    });
+
+    doc.moveDown();
+  }
+
+  // =========================
+  // INCOME RECORDS
+  // =========================
+
+  if (report.records?.length) {
+    doc.font("Helvetica-Bold").text("Income Records");
+
+    doc.moveDown(0.5);
+
+    report.records.forEach((income, index) => {
+      doc
+        .font("Helvetica-Bold")
+        .text(`${index + 1}. ${income.donorName || "Unknown Donor"}`);
+
+      doc.font("Helvetica");
+
+      doc.text(`Amount: Rs. ${income.amount || 0}`);
+
+      doc.text(`Payment Mode: ${income.paymentMode || "-"}`);
+
+      doc.text(`Category: ${income.category || "-"}`);
+
+      if (income.receiptNumber) {
+        doc.text(`Receipt: ${income.receiptNumber}`);
+      }
+
+      doc.moveDown(0.5);
+
+      // Avoid overflowing the page
+      if (doc.y > 720) {
+        doc.addPage();
+      }
+    });
+  }
+
+  // =========================
+  // FOOTER
+  // =========================
+
+  doc
+    .fontSize(9)
+    .fillColor("gray")
+    .text(`Generated on ${new Date().toLocaleString()}`, {
+      align: "center",
+    });
+
+  // =========================
+  // END PDF
+  // =========================
+
+  doc.end();
+};
+
 module.exports = {
   exportFestivalSummaryPdf,
+  exportIncomeReportPdf,
 };
