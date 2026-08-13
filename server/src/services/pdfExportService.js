@@ -336,8 +336,121 @@ const exportExpenseReportPdf = (report, res) => {
   doc.end();
 };
 
+const exportDistributionReportPdf = (report, res) => {
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 40,
+  });
+
+  doc.pipe(res);
+  // TITLE
+  doc.fontSize(18).font("Helvetica-Bold").text("Ganesh Mahotsav", {
+    align: "center",
+  });
+
+  doc.fontSize(14).font("Helvetica").text("Cash Distribution Report", {
+    align: "center",
+  });
+
+  doc.moveDown();
+  // SUMMARY
+  const summary = report.summary || {};
+
+  doc.fontSize(12).font("Helvetica-Bold").text("Distribution Summary");
+
+  doc.moveDown(0.5);
+
+  doc.font("Helvetica");
+
+  // Count
+  doc.text(`Total Distributions: ${summary.totalDistributions || 0}`);
+
+  // Money
+  doc.text(`Total Amount Given: Rs. ${summary.totalAmountGiven || 0}`);
+
+  doc.text(`Total Amount Returned: Rs. ${summary.totalAmountReturned || 0}`);
+
+  doc.text(`Cash With Volunteers: Rs. ${summary.cashWithVolunteers || 0}`);
+
+  // Status counts
+  doc.text(`Pending Distributions: ${summary.pendingDistributions || 0}`);
+
+  doc.text(`Settled Distributions: ${summary.settledDistributions || 0}`);
+
+  doc.moveDown();
+  // DISTRIBUTION RECORDS
+  if (report.records?.length) {
+    doc.font("Helvetica-Bold").text("Distribution Records");
+
+    doc.moveDown(0.5);
+
+    report.records.forEach((distribution, index) => {
+      // New page if necessary
+      if (doc.y > 680) {
+        doc.addPage();
+      }
+
+      doc
+        .font("Helvetica-Bold")
+        .text(
+          `${index + 1}. ${distribution.distributionNumber || "Distribution"}`,
+        );
+
+      doc.font("Helvetica");
+
+      doc.text(
+        `Volunteer: ${
+          distribution.volunteerId?.name || distribution.volunteerName || "-"
+        }`,
+      );
+
+      doc.text(`Amount Given: Rs. ${distribution.amountGiven || 0}`);
+
+      doc.text(`Amount Returned: Rs. ${distribution.amountReturned || 0}`);
+
+      const outstanding =
+        (distribution.amountGiven || 0) - (distribution.amountReturned || 0);
+
+      doc.text(`Outstanding: Rs. ${outstanding}`);
+
+      doc.text(`Purpose: ${distribution.purpose || "-"}`);
+
+      doc.text(`Status: ${distribution.status || "-"}`);
+
+      if (distribution.distributionDate) {
+        doc.text(
+          `Distribution Date: ${new Date(
+            distribution.distributionDate,
+          ).toLocaleString()}`,
+        );
+      }
+
+      if (distribution.returnedDate) {
+        doc.text(
+          `Returned Date: ${new Date(
+            distribution.returnedDate,
+          ).toLocaleString()}`,
+        );
+      }
+
+      doc.moveDown(0.7);
+    });
+  } else {
+    doc.font("Helvetica").text("No distribution records found.");
+  }
+  // FOOTER
+  doc
+    .fontSize(9)
+    .fillColor("gray")
+    .text(`Generated on ${new Date().toLocaleString()}`, {
+      align: "center",
+    });
+  // END PDF
+  doc.end();
+};
 module.exports = {
   exportFestivalSummaryPdf,
   exportIncomeReportPdf,
   exportExpenseReportPdf,
+  exportDistributionReportPdf,
 };

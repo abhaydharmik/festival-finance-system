@@ -10,6 +10,7 @@ const {
   exportFestivalSummaryPdfController,
   exportIncomeReportPdfController,
   exportExpenseReportPdfController,
+  exportDistributionReportPdfController,
 } = require("../controllers/exportController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -68,6 +69,13 @@ router.get(
   protect,
   authorize("admin"),
   exportExpenseReportPdfController,
+);
+
+router.get(
+  "/pdf/distribution",
+  protect,
+  authorize("admin"),
+  exportDistributionReportPdfController,
 );
 
 module.exports = router;
