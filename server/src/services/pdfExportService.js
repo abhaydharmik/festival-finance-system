@@ -111,9 +111,7 @@ const exportIncomeReportPdf = (report, res) => {
 
   doc.pipe(res);
 
-  // =========================
   // TITLE
-  // =========================
 
   doc.fontSize(18).font("Helvetica-Bold").text("Ganesh Mahotsav", {
     align: "center",
@@ -125,9 +123,7 @@ const exportIncomeReportPdf = (report, res) => {
 
   doc.moveDown();
 
-  // =========================
   // SUMMARY
-  // =========================
 
   doc.fontSize(12).font("Helvetica-Bold").text("Income Summary");
 
@@ -144,9 +140,7 @@ const exportIncomeReportPdf = (report, res) => {
 
   doc.moveDown();
 
-  // =========================
   // CATEGORY BREAKDOWN
-  // =========================
 
   if (report.categoryBreakdown?.length) {
     doc.font("Helvetica-Bold").text("Category Breakdown");
@@ -162,9 +156,7 @@ const exportIncomeReportPdf = (report, res) => {
     doc.moveDown();
   }
 
-  // =========================
   // PAYMENT MODE BREAKDOWN
-  // =========================
 
   if (report.paymentModeBreakdown?.length) {
     doc.font("Helvetica-Bold").text("Payment Mode Breakdown");
@@ -180,9 +172,7 @@ const exportIncomeReportPdf = (report, res) => {
     doc.moveDown();
   }
 
-  // =========================
   // INCOME RECORDS
-  // =========================
 
   if (report.records?.length) {
     doc.font("Helvetica-Bold").text("Income Records");
@@ -215,9 +205,7 @@ const exportIncomeReportPdf = (report, res) => {
     });
   }
 
-  // =========================
   // FOOTER
-  // =========================
 
   doc
     .fontSize(9)
@@ -226,9 +214,124 @@ const exportIncomeReportPdf = (report, res) => {
       align: "center",
     });
 
-  // =========================
   // END PDF
-  // =========================
+
+  doc.end();
+};
+
+const exportExpenseReportPdf = (report, res) => {
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 40,
+  });
+
+  doc.pipe(res);
+
+  // TITLE
+
+  doc.fontSize(18).font("Helvetica-Bold").text("Ganesh Mahotsav", {
+    align: "center",
+  });
+
+  doc.fontSize(14).text("Expense Report", {
+    align: "center",
+  });
+
+  doc.moveDown();
+
+  // SUMMARY
+
+  doc.fontSize(12).font("Helvetica-Bold").text("Expense Summary");
+
+  doc.moveDown(0.5);
+
+  const summary = report.summary || {};
+
+  doc.font("Helvetica");
+
+  doc.text(`Total Expense: Rs. ${summary.totalAmount || 0}`);
+
+  doc.text(`Total Transactions: ${summary.totalRecords || 0}`);
+
+  doc.moveDown();
+
+  // CATEGORY BREAKDOWN
+
+  if (report.categoryBreakdown?.length) {
+    doc.font("Helvetica-Bold").text("Category Breakdown");
+
+    doc.moveDown(0.5);
+
+    doc.font("Helvetica");
+
+    report.categoryBreakdown.forEach((item) => {
+      doc.text(`${item._id}: Rs. ${item.total || 0}`);
+    });
+
+    doc.moveDown();
+  }
+
+  // PAYMENT MODE BREAKDOWN
+
+  if (report.paymentModeBreakdown?.length) {
+    doc.font("Helvetica-Bold").text("Payment Mode Breakdown");
+
+    doc.moveDown(0.5);
+
+    doc.font("Helvetica");
+
+    report.paymentModeBreakdown.forEach((item) => {
+      doc.text(`${item._id}: Rs. ${item.total || 0}`);
+    });
+
+    doc.moveDown();
+  }
+
+  // EXPENSE RECORDS
+
+  if (report.records?.length) {
+    doc.font("Helvetica-Bold").text("Expense Records");
+
+    doc.moveDown(0.5);
+
+    report.records.forEach((expense, index) => {
+      doc
+        .font("Helvetica-Bold")
+        .text(`${index + 1}. ${expense.description || "Expense"}`);
+
+      doc.font("Helvetica");
+
+      doc.text(`Amount: Rs. ${expense.amount || 0}`);
+
+      doc.text(`Category: ${expense.category || "-"}`);
+
+      doc.text(`Payment Mode: ${expense.paymentMode || "-"}`);
+
+      if (expense.vendorName) {
+        doc.text(`Vendor: ${expense.vendorName}`);
+      }
+
+      if (expense.voucherNumber) {
+        doc.text(`Voucher: ${expense.voucherNumber}`);
+      }
+
+      doc.moveDown(0.5);
+
+      // Prevent content from going outside page
+      if (doc.y > 720) {
+        doc.addPage();
+      }
+    });
+  }
+
+  // FOOTER
+
+  doc
+    .fontSize(9)
+    .fillColor("gray")
+    .text(`Generated on ${new Date().toLocaleString()}`, {
+      align: "center",
+    });
 
   doc.end();
 };
@@ -236,4 +339,5 @@ const exportIncomeReportPdf = (report, res) => {
 module.exports = {
   exportFestivalSummaryPdf,
   exportIncomeReportPdf,
+  exportExpenseReportPdf,
 };
