@@ -17,7 +17,7 @@ const buildDateFilter = (startDate, endDate) => {
   let end;
 
   if (startDate) {
-    const start = new Date(startDate);
+    start = new Date(startDate);
 
     if (Number.isNaN(start.getTime())) {
       throw new ApiError(400, "Invalid start date");
@@ -28,7 +28,7 @@ const buildDateFilter = (startDate, endDate) => {
   }
 
   if (endDate) {
-    const end = new Date(endDate);
+    end = new Date(endDate);
 
     if (Number.isNaN(end.getTime())) {
       throw new ApiError(400, "Invalid end date");
@@ -38,7 +38,7 @@ const buildDateFilter = (startDate, endDate) => {
     dateFilter.$lte = end;
   }
 
-  if (startDate && endDate && start > end) {
+  if (start && end && start > end) {
     throw new ApiError(400, "Start date cannot be after end date");
   }
 
