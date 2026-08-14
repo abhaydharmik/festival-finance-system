@@ -18,6 +18,7 @@ const {
   exportExpenseReportPdf,
   exportDistributionReportPdf,
   exportVolunteerReportPdf,
+  exportDailyTallyReportPdf,
 } = require("../services/pdfExportService");
 
 const exportFestivalSummaryExcel = asyncHandler(async (req, res) => {
@@ -216,6 +217,20 @@ const exportVolunteerReportPdfController = asyncHandler(async (req, res) => {
   exportVolunteerReportPdf(report, res);
 });
 
+const exportDailyTallyReportPdfController = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateDailyTallyReport(req.query);
+
+  const filename = `daily-tally-report-${Date.now()}.pdf`;
+
+  res.setHeader("Content-Type", "application/pdf");
+
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  exportDailyTallyReportPdf(report, res);
+});
+
 module.exports = {
   exportFestivalSummaryExcel,
   exportIncomeReportExcel,
@@ -228,4 +243,5 @@ module.exports = {
   exportExpenseReportPdfController,
   exportDistributionReportPdfController,
   exportVolunteerReportPdfController,
+  exportDailyTallyReportPdfController,
 };
