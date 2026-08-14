@@ -17,6 +17,7 @@ const {
   exportIncomeReportPdf,
   exportExpenseReportPdf,
   exportDistributionReportPdf,
+  exportVolunteerReportPdf,
 } = require("../services/pdfExportService");
 
 const exportFestivalSummaryExcel = asyncHandler(async (req, res) => {
@@ -201,6 +202,20 @@ const exportDistributionReportPdfController = asyncHandler(async (req, res) => {
   exportDistributionReportPdf(report, res);
 });
 
+const exportVolunteerReportPdfController = asyncHandler(async (req, res) => {
+  validateReportFilters(req.query);
+
+  const report = await reportService.generateVolunteerReport(req.query);
+
+  const filename = `volunteer-report-${Date.now()}.pdf`;
+
+  res.setHeader("Content-Type", "application/pdf");
+
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  exportVolunteerReportPdf(report, res);
+});
+
 module.exports = {
   exportFestivalSummaryExcel,
   exportIncomeReportExcel,
@@ -212,4 +227,5 @@ module.exports = {
   exportIncomeReportPdfController,
   exportExpenseReportPdfController,
   exportDistributionReportPdfController,
+  exportVolunteerReportPdfController,
 };

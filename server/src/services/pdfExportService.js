@@ -448,9 +448,108 @@ const exportDistributionReportPdf = (report, res) => {
   // END PDF
   doc.end();
 };
+
+const exportVolunteerReportPdf = (report, res) => {
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 40,
+  });
+
+  doc.pipe(res);
+
+  // TITLE
+
+  doc.fontSize(18).font("Helvetica-Bold").text("Ganesh Mahotsav", {
+    align: "center",
+  });
+
+  doc.fontSize(14).font("Helvetica").text("Volunteer Accountability Report", {
+    align: "center",
+  });
+
+  doc.moveDown();
+
+  // SUMMARY
+
+  const summary = report.summary || {};
+
+  doc.fontSize(12).font("Helvetica-Bold").text("Volunteer Summary");
+
+  doc.moveDown(0.5);
+
+  doc.font("Helvetica");
+
+  doc.text(`Total Volunteers: ${summary.totalVolunteers || 0}`);
+
+  doc.text(`Total Given: Rs. ${summary.totalGiven || 0}`);
+
+  doc.text(`Total Returned: Rs. ${summary.totalReturned || 0}`);
+
+  doc.text(`Total Expenses: Rs. ${summary.totalExpenses || 0}`);
+
+  doc.text(`Total Outstanding: Rs. ${summary.totalOutstanding || 0}`);
+
+  doc.moveDown();
+
+  // VOLUNTEER RECORDS
+
+  if (report.volunteers?.length) {
+    doc.font("Helvetica-Bold").text("Volunteer Records");
+
+    doc.moveDown(0.5);
+
+    report.volunteers.forEach((volunteer, index) => {
+      // New page when necessary
+      if (doc.y > 680) {
+        doc.addPage();
+      }
+
+      doc
+        .font("Helvetica-Bold")
+        .text(`${index + 1}. ${volunteer.volunteerName || "Volunteer"}`);
+
+      doc.font("Helvetica");
+
+      if (volunteer.volunteerEmail) {
+        doc.text(`Email: ${volunteer.volunteerEmail}`);
+      }
+
+      doc.text(`Total Distributions: ${volunteer.totalDistributions || 0}`);
+
+      doc.text(`Total Given: Rs. ${volunteer.totalGiven || 0}`);
+
+      doc.text(`Total Returned: Rs. ${volunteer.totalReturned || 0}`);
+
+      doc.text(`Volunteer Expenses: Rs. ${volunteer.totalExpenses || 0}`);
+
+      doc.text(`Outstanding Advance: Rs. ${volunteer.outstandingAmount || 0}`);
+
+      doc.text(`Remaining / Unaccounted: Rs. ${volunteer.remainingCash || 0}`);
+
+      doc.moveDown(0.7);
+    });
+  } else {
+    doc.font("Helvetica").text("No volunteer records found.");
+  }
+
+  // FOOTER
+
+  doc
+    .fontSize(9)
+    .fillColor("gray")
+    .text(`Generated on ${new Date().toLocaleString()}`, {
+      align: "center",
+    });
+
+  // END PDF
+
+  doc.end();
+};
+
 module.exports = {
   exportFestivalSummaryPdf,
   exportIncomeReportPdf,
   exportExpenseReportPdf,
   exportDistributionReportPdf,
+  exportVolunteerReportPdf,
 };
