@@ -578,25 +578,15 @@ const exportDailyTallyReportPdf = (report, res) => {
 
   doc.text(`Total Days: ${summary.totalDays || 0}`);
 
-  doc.text(`Opening Cash: Rs. ${summary.openingCash || 0}`);
-
-  doc.text(`Cash Income: Rs. ${summary.cashIncome || 0}`);
-
-  doc.text(`Online Income: Rs. ${summary.onlineIncome || 0}`);
-
   doc.text(`Total Income: Rs. ${summary.totalIncome || 0}`);
 
   doc.text(`Total Expense: Rs. ${summary.totalExpense || 0}`);
 
-  doc.text(`Cash Distributed: Rs. ${summary.cashDistributed || 0}`);
+  doc.text(`Cash Distributed: Rs. ${summary.totalCashDistributed || 0}`);
 
-  doc.text(`Cash Returned: Rs. ${summary.cashReturned || 0}`);
+  doc.text(`Cash Returned: Rs. ${summary.totalCashReturned || 0}`);
 
-  doc.text(`Cash With Volunteers: Rs. ${summary.cashWithVolunteers || 0}`);
-
-  doc.text(`Cash On Hand: Rs. ${summary.cashOnHand || 0}`);
-
-  doc.text(`Overall Balance: Rs. ${summary.overallBalance || 0}`);
+  doc.text(`Cash With Volunteers: Rs. ${summary.totalCashWithVolunteers || 0}`);
 
   doc.moveDown();
 
@@ -671,10 +661,6 @@ const exportDailyTallyReportPdf = (report, res) => {
     });
 
   doc.end();
-};
-
-module.exports = {
-  exportDailyTallyReportPdf,
 };
 
 module.exports = {
