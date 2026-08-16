@@ -4,6 +4,15 @@ import Login from "../pages/auth/Login";
 import ProtectedRoute from "./ProtectedRoute";
 import Dashboard from "../pages/dashboard/Dashboard";
 import RoleRoute from "./RoleRoute";
+import MainLayout from "../layouts/MainLayout";
+import Festivals from "../pages/festivals/Festivals";
+import Income from "../pages/income/Income";
+import Expenses from "../pages/expenses/Expenses";
+import CashDistribution from "../pages/cash/CashDistribution";
+import DailyTally from "../pages/tally/DailyTally";
+import Reports from "../pages/reports/Reports";
+import Volunteers from "../pages/volunteers/Volunteers";
+import Settings from "../pages/settings/Settings";
 
 const AppRoutes = () => {
   return (
@@ -13,12 +22,22 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         {/* Protected */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/festivals" element={<Festivals />} />
+            <Route path="/income" element={<Income />} />
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/cash" element={<CashDistribution />} />
+            <Route path="/tally" element={<DailyTally />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/volunteers" element={<Volunteers />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
 
           {/* Admin */}
           <Route element={<RoleRoute allowedRoles={["admin"]} />} />
         </Route>
-        <Route path="/*" element={<Navigate to={"/dashboard"} replace />} />
+        <Route path="*" element={<Navigate to={"/dashboard"} replace />} />
       </Routes>
     </BrowserRouter>
   );
