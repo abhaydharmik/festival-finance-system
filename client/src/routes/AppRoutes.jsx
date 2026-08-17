@@ -13,6 +13,8 @@ import DailyTally from "../pages/tally/DailyTally";
 import Reports from "../pages/reports/Reports";
 import Volunteers from "../pages/volunteers/Volunteers";
 import Settings from "../pages/settings/Settings";
+import AddIncome from "../pages/income/AddIncome";
+import IncomeDetails from "../pages/income/IncomeDetails";
 
 const AppRoutes = () => {
   return (
@@ -25,7 +27,12 @@ const AppRoutes = () => {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/festivals" element={<Festivals />} />
+
+            {/* Income Routes */}
             <Route path="/income" element={<Income />} />
+            <Route path="/income/add" element={<AddIncome />} />
+            <Route path="/income/:id" element={<IncomeDetails />} />
+
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/cash" element={<CashDistribution />} />
             <Route path="/tally" element={<DailyTally />} />
