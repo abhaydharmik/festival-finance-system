@@ -5,7 +5,7 @@ const EXPENSE_CATEGORY = {
   SOUND: "sound",
   LIGHTING: "lighting",
   TRANSPORT: "transport",
-  BANNER: "BANNER",
+  BANNER: "banner",
   PRIZE: "prize",
   RENT: "rent",
   UTILITIES: "utilities",

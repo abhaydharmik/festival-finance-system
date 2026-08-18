@@ -38,7 +38,7 @@ const validateExpense = (data) => {
     throw new ApiError(400, "Amount must be greater than zero");
   }
 
-  if (!Object.values(PAYMENT_MODE).includes(paymentMode)) {
+  if (!Object.values(EXPENSE_PAYMENT_MODE).includes(paymentMode)) {
     throw new ApiError(400, "Invalid payment mode");
   }
 };
