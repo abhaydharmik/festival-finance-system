@@ -15,6 +15,8 @@ import Volunteers from "../pages/volunteers/Volunteers";
 import Settings from "../pages/settings/Settings";
 import AddIncome from "../pages/income/AddIncome";
 import IncomeDetails from "../pages/income/IncomeDetails";
+import AddExpense from "../pages/expenses/AddExpense";
+import ExpenseDetails from "../pages/expenses/ExpenseDetails";
 
 const AppRoutes = () => {
   return (
@@ -33,7 +35,11 @@ const AppRoutes = () => {
             <Route path="/income/add" element={<AddIncome />} />
             <Route path="/income/:id" element={<IncomeDetails />} />
 
+            {/* Expense Routes */}
             <Route path="/expenses" element={<Expenses />} />
+            <Route path="/expenses/add" element={<AddExpense />} />
+            <Route path="/expenses/:id" element={<ExpenseDetails />} />
+
             <Route path="/cash" element={<CashDistribution />} />
             <Route path="/tally" element={<DailyTally />} />
             <Route path="/reports" element={<Reports />} />
