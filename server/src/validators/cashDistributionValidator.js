@@ -1,9 +1,12 @@
 const mongoose = require("mongoose");
+
 const {
   DISTRIBUTION_PURPOSE,
 } = require("../constants/cashDistributionConstants");
+
 const ApiError = require("../utils/ApiError");
 
+// Create validation
 const validateCashDistribution = (data) => {
   const { festivalId, volunteerId, amountGiven, purpose } = data;
 
@@ -24,4 +27,35 @@ const validateCashDistribution = (data) => {
   }
 };
 
-module.exports = { validateCashDistribution };
+// Update validation
+const validateCashDistributionUpdate = (data) => {
+  const { purpose, distributionDate, remarks } = data;
+
+  if (
+    purpose !== undefined &&
+    !Object.values(DISTRIBUTION_PURPOSE).includes(purpose)
+  ) {
+    throw new ApiError(400, "Invalid distribution purpose");
+  }
+
+  if (distributionDate !== undefined) {
+    const date = new Date(distributionDate);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new ApiError(400, "Invalid distribution date");
+    }
+  }
+
+  if (remarks !== undefined && typeof remarks !== "string") {
+    throw new ApiError(400, "Remarks must be a string");
+  }
+
+  if (remarks !== undefined && remarks.length > 500) {
+    throw new ApiError(400, "Remarks cannot exceed 500 characters");
+  }
+};
+
+module.exports = {
+  validateCashDistribution,
+  validateCashDistributionUpdate,
+};

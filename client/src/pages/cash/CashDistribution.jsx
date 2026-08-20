@@ -2,15 +2,21 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Banknote,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Eye,
   Plus,
   Search,
+  Wallet,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-import { getCashDistributions } from "../../services/cashDistributionService";
+import {
+  getCashDistributions,
+  getCashDistributionSummary,
+} from "../../services/cashDistributionService";
 import { useAuth } from "../../context/AuthContext";
 
 const formatCurrency = (amount = 0) => {
@@ -59,9 +65,24 @@ const CashDistribution = () => {
     totalPages: 1,
   });
 
+  const [summary, setSummary] = useState({
+    totalDistributed: 0,
+    totalDistributions: 0,
+    pendingAmount: 0,
+    settledAmount: 0,
+    pendingDistributions: 0,
+    settledDistributions: 0,
+  });
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+
   const [loading, setLoading] = useState(true);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
+  // ================================
+  // FETCH CASH DISTRIBUTIONS
+  // ================================
 
   const fetchDistributions = async (page = 1) => {
     try {
@@ -78,12 +99,18 @@ const CashDistribution = () => {
         }),
       });
 
-      const data = response.data;
+      console.log("CASH DISTRIBUTION RESPONSE:", response);
 
-      setDistributions(data?.distributions || []);
+      /*
+       * Backend ApiResponse structure:
+       * response.data.data
+       */
+      const data = response.data?.data;
+
+      setDistributions(response.data?.distributions || []);
 
       setPagination(
-        data?.pagination || {
+        response.data?.pagination || {
           total: 0,
           page: 1,
           limit: 10,
@@ -101,15 +128,64 @@ const CashDistribution = () => {
     }
   };
 
+  // ================================
+  // FETCH SUMMARY
+  // ================================
+
+  const fetchSummary = async () => {
+    try {
+      setSummaryLoading(true);
+
+      const response = await getCashDistributionSummary();
+
+      /*
+       * Backend ApiResponse structure:
+       * response.data.data
+       */
+      const data = response.data;
+
+      setSummary({
+        totalDistributed: data?.totalDistributed || 0,
+        totalDistributions: data?.totalDistributions || 0,
+        pendingAmount: data?.pendingAmount || 0,
+        settledAmount: data?.settledAmount || 0,
+        pendingDistributions: data?.pendingDistributions || 0,
+        settledDistributions: data?.settledDistributions || 0,
+      });
+    } catch (error) {
+      console.error("Failed to fetch cash distribution summary:", error);
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to fetch cash distribution summary",
+      );
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  // ================================
+  // INITIAL LOAD / STATUS CHANGE
+  // ================================
+
   useEffect(() => {
     fetchDistributions(1);
+    fetchSummary();
   }, [status]);
+
+  // ================================
+  // SEARCH
+  // ================================
 
   const handleSearch = (e) => {
     e.preventDefault();
 
     fetchDistributions(1);
   };
+
+  // ================================
+  // PAGINATION
+  // ================================
 
   const handlePrevious = () => {
     if (pagination.page > 1) {
@@ -127,7 +203,9 @@ const CashDistribution = () => {
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
+      {/* =========================================
+          HEADER
+      ========================================= */}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -151,7 +229,111 @@ const CashDistribution = () => {
         )}
       </div>
 
-      {/* FILTERS */}
+      {/* =========================================
+          SUMMARY CARDS
+      ========================================= */}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* TOTAL DISTRIBUTED */}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Total Distributed
+              </p>
+
+              <h3 className="mt-2 text-2xl font-bold text-gray-900">
+                {summaryLoading
+                  ? "..."
+                  : formatCurrency(summary.totalDistributed)}
+              </h3>
+            </div>
+
+            <div className="rounded-lg bg-gray-100 p-3">
+              <Banknote size={22} className="text-gray-700" />
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-gray-500">
+            {summary.totalDistributions} total distributions
+          </p>
+        </div>
+
+        {/* PENDING */}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Pending Amount
+              </p>
+
+              <h3 className="mt-2 text-2xl font-bold text-gray-900">
+                {summaryLoading ? "..." : formatCurrency(summary.pendingAmount)}
+              </h3>
+            </div>
+
+            <div className="rounded-lg bg-yellow-50 p-3">
+              <Clock size={22} className="text-yellow-600" />
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-gray-500">
+            {summary.pendingDistributions} pending distributions
+          </p>
+        </div>
+
+        {/* SETTLED */}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Settled Amount
+              </p>
+
+              <h3 className="mt-2 text-2xl font-bold text-gray-900">
+                {summaryLoading ? "..." : formatCurrency(summary.settledAmount)}
+              </h3>
+            </div>
+
+            <div className="rounded-lg bg-green-50 p-3">
+              <CheckCircle size={22} className="text-green-600" />
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-gray-500">
+            {summary.settledDistributions} settled distributions
+          </p>
+        </div>
+
+        {/* TOTAL RECORDS */}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Records</p>
+
+              <h3 className="mt-2 text-2xl font-bold text-gray-900">
+                {summaryLoading ? "..." : summary.totalDistributions}
+              </h3>
+            </div>
+
+            <div className="rounded-lg bg-blue-50 p-3">
+              <Wallet size={22} className="text-blue-600" />
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-gray-500">
+            Cash distribution records
+          </p>
+        </div>
+      </div>
+
+      {/* =========================================
+          FILTERS
+      ========================================= */}
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <form
@@ -202,7 +384,9 @@ const CashDistribution = () => {
         </form>
       </div>
 
-      {/* TABLE */}
+      {/* =========================================
+          TABLE
+      ========================================= */}
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
@@ -336,7 +520,9 @@ const CashDistribution = () => {
               </table>
             </div>
 
-            {/* PAGINATION */}
+            {/* =========================================
+                PAGINATION
+            ========================================= */}
 
             <div className="flex items-center justify-between border-t border-gray-200 px-5 py-4">
               <p className="text-sm text-gray-500">

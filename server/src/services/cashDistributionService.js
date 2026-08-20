@@ -4,6 +4,7 @@ const Festival = require("../models/Festival");
 const ApiError = require("../utils/ApiError");
 const {
   validateCashDistribution,
+  validateCashDistributionUpdate,
 } = require("../validators/cashDistributionValidator");
 const CashDistribution = require("../models/CashDistribution");
 const {
@@ -178,7 +179,7 @@ const getCashDistributionById = async (distributionid) => {
 // Update Cash Distribution
 const updateCashDistribution = async (distributionId, updateData) => {
   // validate request
-  validateCashDistribution(updateData);
+  validateCashDistributionUpdate(updateData);
 
   const distribution = await CashDistribution.findById(distributionId);
 
