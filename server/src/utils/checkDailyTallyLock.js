@@ -1,4 +1,3 @@
-const { DAILY_TALLY_STATUS } = require("../constants/dailyTallyConstants");
 const DailyTally = require("../models/DailyTally");
 const ApiError = require("./ApiError");
 

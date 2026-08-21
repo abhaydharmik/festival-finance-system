@@ -20,6 +20,8 @@ import ExpenseDetails from "../pages/expenses/ExpenseDetails";
 import AddCashDistribution from "../pages/cash/AddCashDistribution";
 import CashDistributionDetails from "../pages/cash/CashDistributionDetails";
 import EditCashDistribution from "../pages/cash/EditCashDistribution";
+import DailyTallyDetails from "../pages/tally/DailyTallyDetails";
+import CloseDailyTally from "../pages/tally/CloseDailyTally";
 
 const AppRoutes = () => {
   return (
@@ -49,7 +51,11 @@ const AppRoutes = () => {
             <Route path="/cash/:id" element={<CashDistributionDetails />} />
             <Route path="/cash/:id/edit" element={<EditCashDistribution />} />
 
+            {/* Daily Tally Routes */}
             <Route path="/tally" element={<DailyTally />} />
+            <Route path="/tally/:id" element={<DailyTallyDetails />} />
+            <Route path="/tally/close" element={<CloseDailyTally />} />
+
             <Route path="/reports" element={<Reports />} />
             <Route path="/volunteers" element={<Volunteers />} />
             <Route path="/settings" element={<Settings />} />

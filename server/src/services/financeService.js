@@ -1,10 +1,16 @@
 const {
   DISTRIBUTION_STATUS,
 } = require("../constants/cashDistributionConstants");
+
 const { INCOME_PAYMENT_MODE } = require("../constants/incomeConstants");
+
 const CashDistribution = require("../models/CashDistribution");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
+
+// =====================================================
+// GET TODAY DATE RANGE
+// =====================================================
 
 const getTodayRange = () => {
   const today = new Date();
@@ -15,10 +21,16 @@ const getTodayRange = () => {
   const endOfDay = new Date(today);
   endOfDay.setHours(23, 59, 59, 999);
 
-  return { startOfDay, endOfDay };
+  return {
+    startOfDay,
+    endOfDay,
+  };
 };
 
-// Get Overall Balance
+// =====================================================
+// GET OVERALL BALANCE
+// =====================================================
+
 const getOverallBalance = async () => {
   const [income, expense] = await Promise.all([
     Income.aggregate([
@@ -27,9 +39,11 @@ const getOverallBalance = async () => {
           isCancelled: false,
         },
       },
+
       {
         $group: {
           _id: null,
+
           total: {
             $sum: "$amount",
           },
@@ -43,9 +57,11 @@ const getOverallBalance = async () => {
           isCancelled: false,
         },
       },
+
       {
         $group: {
           _id: null,
+
           total: {
             $sum: "$amount",
           },
@@ -64,7 +80,10 @@ const getOverallBalance = async () => {
   };
 };
 
-// Get Today Summary
+// =====================================================
+// GET TODAY SUMMARY
+// =====================================================
+
 const getTodaySummary = async () => {
   const { startOfDay, endOfDay } = getTodayRange();
 
@@ -73,18 +92,22 @@ const getTodaySummary = async () => {
       {
         $match: {
           isCancelled: false,
+
           createdAt: {
             $gte: startOfDay,
             $lte: endOfDay,
           },
         },
       },
+
       {
         $group: {
           _id: null,
+
           totalIncome: {
             $sum: "$amount",
           },
+
           donations: {
             $sum: 1,
           },
@@ -96,18 +119,22 @@ const getTodaySummary = async () => {
       {
         $match: {
           isCancelled: false,
+
           createdAt: {
             $gte: startOfDay,
             $lte: endOfDay,
           },
         },
       },
+
       {
         $group: {
           _id: null,
+
           totalExpense: {
             $sum: "$amount",
           },
+
           expenses: {
             $sum: 1,
           },
@@ -122,13 +149,19 @@ const getTodaySummary = async () => {
   return {
     todayIncome,
     todayExpense,
+
     todayBalance: todayIncome - todayExpense,
+
     todayDonations: income[0]?.donations || 0,
+
     todayExpenses: expense[0]?.expenses || 0,
   };
 };
 
-// Income Breakdown
+// =====================================================
+// INCOME BREAKDOWN
+// =====================================================
+
 const getIncomeBreakdown = async () => {
   const summary = await Income.aggregate([
     {
@@ -136,6 +169,7 @@ const getIncomeBreakdown = async () => {
         isCancelled: false,
       },
     },
+
     {
       $group: {
         _id: null,
@@ -146,7 +180,9 @@ const getIncomeBreakdown = async () => {
               {
                 $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH],
               },
+
               "$amount",
+
               0,
             ],
           },
@@ -158,10 +194,13 @@ const getIncomeBreakdown = async () => {
               {
                 $in: [
                   "$paymentMode",
+
                   [INCOME_PAYMENT_MODE.BANK, INCOME_PAYMENT_MODE.UPI],
                 ],
               },
+
               "$amount",
+
               0,
             ],
           },
@@ -183,7 +222,10 @@ const getIncomeBreakdown = async () => {
   );
 };
 
-// Get Cash Distribution Metrics
+// =====================================================
+// CASH DISTRIBUTION METRICS
+// =====================================================
+
 const getDistributionMetrics = async () => {
   const [distributionSummary, expenseSummary] = await Promise.all([
     CashDistribution.aggregate([
@@ -192,14 +234,30 @@ const getDistributionMetrics = async () => {
           isCancelled: false,
         },
       },
+
       {
         $group: {
           _id: null,
-          cashDistributed: { $sum: "$amountGiven" },
-          cashReturned: { $sum: "$amountReturned" },
+
+          cashDistributed: {
+            $sum: "$amountGiven",
+          },
+
+          cashReturned: {
+            $sum: "$amountReturned",
+          },
+
           pendingSettlements: {
             $sum: {
-              $cond: [{ $eq: ["$status", DISTRIBUTION_STATUS.PENDING] }, 1, 0],
+              $cond: [
+                {
+                  $eq: ["$status", DISTRIBUTION_STATUS.PENDING],
+                },
+
+                1,
+
+                0,
+              ],
             },
           },
         },
@@ -210,12 +268,17 @@ const getDistributionMetrics = async () => {
       {
         $match: {
           isCancelled: false,
-          distributionId: { $exists: true },
+
+          distributionId: {
+            $exists: true,
+          },
         },
       },
+
       {
         $group: {
           _id: null,
+
           distributionExpense: {
             $sum: "$amount",
           },
@@ -234,30 +297,46 @@ const getDistributionMetrics = async () => {
 
   return {
     ...result,
+
     distributionExpense,
+
     cashWithVolunteers:
       result.cashDistributed - result.cashReturned - distributionExpense,
   };
 };
 
-// Get Recent Activity
+// =====================================================
+// GET RECENT ACTIVITY
+// =====================================================
 
 const getRecentActivity = async () => {
   const [income, expense, distribution] = await Promise.all([
-    Income.find({ isCancelled: false })
+    Income.find({
+      isCancelled: false,
+    })
       .select("donorName amount paymentMode createdAt")
-      .sort({ createdAt: -1 })
+      .sort({
+        createdAt: -1,
+      })
       .limit(5),
 
-    Expense.find({ isCancelled: false })
+    Expense.find({
+      isCancelled: false,
+    })
       .select("description amount category createdAt")
-      .sort({ createdAt: -1 })
+      .sort({
+        createdAt: -1,
+      })
       .limit(5),
 
-    CashDistribution.find({ isCancelled: false })
+    CashDistribution.find({
+      isCancelled: false,
+    })
       .populate("volunteerId", "name")
       .select("distributionNumber amountGiven volunteerId createdAt")
-      .sort({ createdAt: -1 })
+      .sort({
+        createdAt: -1,
+      })
       .limit(5),
   ]);
 
@@ -268,7 +347,10 @@ const getRecentActivity = async () => {
   };
 };
 
-// Get Today's Income Breakdown
+// =====================================================
+// GET TODAY INCOME BREAKDOWN
+// =====================================================
+
 const getTodayIncomeBreakdown = async () => {
   const { startOfDay, endOfDay } = getTodayRange();
 
@@ -276,12 +358,14 @@ const getTodayIncomeBreakdown = async () => {
     {
       $match: {
         isCancelled: false,
+
         createdAt: {
           $gte: startOfDay,
           $lte: endOfDay,
         },
       },
     },
+
     {
       $group: {
         _id: null,
@@ -289,8 +373,12 @@ const getTodayIncomeBreakdown = async () => {
         cashIncome: {
           $sum: {
             $cond: [
-              { $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH] },
+              {
+                $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH],
+              },
+
               "$amount",
+
               0,
             ],
           },
@@ -302,10 +390,13 @@ const getTodayIncomeBreakdown = async () => {
               {
                 $in: [
                   "$paymentMode",
+
                   [INCOME_PAYMENT_MODE.UPI, INCOME_PAYMENT_MODE.BANK],
                 ],
               },
+
               "$amount",
+
               0,
             ],
           },
@@ -322,7 +413,10 @@ const getTodayIncomeBreakdown = async () => {
   );
 };
 
-// Get Today's Expense Summary
+// =====================================================
+// GET TODAY EXPENSE SUMMARY
+// =====================================================
+
 const getTodayExpenseSummary = async () => {
   const { startOfDay, endOfDay } = getTodayRange();
 
@@ -330,15 +424,69 @@ const getTodayExpenseSummary = async () => {
     {
       $match: {
         isCancelled: false,
+
         createdAt: {
           $gte: startOfDay,
           $lte: endOfDay,
         },
       },
     },
+
     {
       $group: {
         _id: null,
+
+        // ---------------------------------------------
+        // CASH EXPENSE
+        // ---------------------------------------------
+
+        cashExpense: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  {
+                    $toLower: "$paymentMode",
+                  },
+
+                  "cash",
+                ],
+              },
+
+              "$amount",
+
+              0,
+            ],
+          },
+        },
+
+        // ---------------------------------------------
+        // ONLINE EXPENSE
+        // ---------------------------------------------
+
+        onlineExpense: {
+          $sum: {
+            $cond: [
+              {
+                $in: [
+                  {
+                    $toLower: "$paymentMode",
+                  },
+
+                  ["upi", "bank"],
+                ],
+              },
+
+              "$amount",
+
+              0,
+            ],
+          },
+        },
+
+        // ---------------------------------------------
+        // TOTAL EXPENSE
+        // ---------------------------------------------
 
         totalExpense: {
           $sum: "$amount",
@@ -349,26 +497,37 @@ const getTodayExpenseSummary = async () => {
 
   return (
     summary[0] || {
+      cashExpense: 0,
+      onlineExpense: 0,
       totalExpense: 0,
     }
   );
 };
 
-// Get Today's Distribution Summary
+// =====================================================
+// GET TODAY DISTRIBUTION SUMMARY
+// =====================================================
+
 const getTodayDistributionSummary = async () => {
   const { startOfDay, endOfDay } = getTodayRange();
 
   const [distributionSummary, expenseSummary] = await Promise.all([
+    // -----------------------------------------------
+    // CASH DISTRIBUTIONS
+    // -----------------------------------------------
+
     CashDistribution.aggregate([
       {
         $match: {
           isCancelled: false,
+
           createdAt: {
             $gte: startOfDay,
             $lte: endOfDay,
           },
         },
       },
+
       {
         $group: {
           _id: null,
@@ -384,19 +543,26 @@ const getTodayDistributionSummary = async () => {
       },
     ]),
 
+    // -----------------------------------------------
+    // EXPENSES FROM DISTRIBUTIONS
+    // -----------------------------------------------
+
     Expense.aggregate([
       {
         $match: {
           isCancelled: false,
+
           distributionId: {
             $exists: true,
           },
+
           createdAt: {
             $gte: startOfDay,
             $lte: endOfDay,
           },
         },
       },
+
       {
         $group: {
           _id: null,
@@ -418,7 +584,9 @@ const getTodayDistributionSummary = async () => {
 
   return {
     cashDistributed: distribution.cashDistributed,
+
     cashReturned: distribution.cashReturned,
+
     cashWithVolunteers:
       distribution.cashDistributed -
       distribution.cashReturned -
@@ -426,38 +594,73 @@ const getTodayDistributionSummary = async () => {
   };
 };
 
-// Get Closing Summary
+// =====================================================
+// GET CLOSING SUMMARY
+// =====================================================
+
 const getClosingSummary = async () => {
   const [income, expense, distribution] = await Promise.all([
     getTodayIncomeBreakdown(),
+
     getTodayExpenseSummary(),
+
     getTodayDistributionSummary(),
   ]);
 
+  // -----------------------------------------------
+  // TOTAL INCOME
+  // -----------------------------------------------
+
   const totalIncome = income.cashIncome + income.onlineIncome;
 
+  // -----------------------------------------------
+  // RETURN COMPLETE CLOSING SUMMARY
+  // -----------------------------------------------
+
   return {
+    // Income
     cashIncome: income.cashIncome,
+
     onlineIncome: income.onlineIncome,
+
     totalIncome,
+
+    // Expense
+    cashExpense: expense.cashExpense,
+
+    onlineExpense: expense.onlineExpense,
 
     totalExpense: expense.totalExpense,
 
+    // Distribution
     cashDistributed: distribution.cashDistributed,
+
     cashReturned: distribution.cashReturned,
 
     cashWithVolunteers: distribution.cashWithVolunteers,
   };
 };
 
+// =====================================================
+// EXPORTS
+// =====================================================
+
 module.exports = {
   getOverallBalance,
+
   getTodaySummary,
+
   getIncomeBreakdown,
+
   getDistributionMetrics,
+
   getRecentActivity,
+
   getTodayIncomeBreakdown,
+
   getTodayExpenseSummary,
+
   getTodayDistributionSummary,
+
   getClosingSummary,
 };
