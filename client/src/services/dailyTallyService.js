@@ -1,36 +1,53 @@
 import api from "./api";
 
-// Get Today's daily tally
+// =====================================================
+// GET TODAY'S DAILY TALLY
+// =====================================================
+
 export const getTodayDailyTally = async () => {
-  const response = await api.get(`/daily-tally/today`);
+  const response = await api.get("/daily-tally/today");
 
   return response.data;
 };
 
-// Get daily tally history
+// =====================================================
+// GET DAILY TALLY HISTORY
+// =====================================================
+
 export const getDailyTallyHistory = async (params = {}) => {
-  const response = await api.get(`/daily-tally/history`, { params });
+  const response = await api.get("/daily-tally/history", {
+    params,
+  });
 
   return response.data;
 };
 
-// Get daily tally by ID
+// =====================================================
+// GET DAILY TALLY BY ID
+// =====================================================
+
 export const getDailyTallyById = async (id) => {
   const response = await api.get(`/daily-tally/${id}`);
 
   return response.data;
 };
 
-// Close today's daily tally
+// =====================================================
+// CLOSE TODAY'S DAILY TALLY
+// =====================================================
+
 export const closeDailyTally = async (data = {}) => {
-  const response = await api.post(`/daily-tally/close`, data);
+  const response = await api.post("/daily-tally/close", data);
 
   return response.data;
 };
 
-// Reopen daily tally
-export const reopenDailyTally = async (id, data) => {
-  const response = await api.patch(`daily-tally/${id}/reopen`, data);
+// =====================================================
+// REOPEN DAILY TALLY
+// =====================================================
+
+export const reopenDailyTally = async (id, data = {}) => {
+  const response = await api.patch(`/daily-tally/${id}/reopen`, data);
 
   return response.data;
 };

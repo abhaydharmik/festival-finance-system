@@ -279,6 +279,10 @@ const DailyTally = () => {
                   </th>
 
                   <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-500">
+                    Opening Cash
+                  </th>
+
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-500">
                     Income
                   </th>
 
@@ -305,6 +309,10 @@ const DailyTally = () => {
                   <tr key={tally._id} className="transition hover:bg-gray-50">
                     <td className="px-5 py-4 text-sm font-medium text-gray-900">
                       {formatDate(tally.tallyDate)}
+                    </td>
+
+                    <td className="px-5 py-4 text-right text-sm font-medium text-gray-900">
+                      {formatCurrency(tally.openingCash)}
                     </td>
 
                     <td className="px-5 py-4 text-right text-sm text-green-600">
