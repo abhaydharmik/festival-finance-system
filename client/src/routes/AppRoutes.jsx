@@ -22,6 +22,12 @@ import CashDistributionDetails from "../pages/cash/CashDistributionDetails";
 import EditCashDistribution from "../pages/cash/EditCashDistribution";
 import DailyTallyDetails from "../pages/tally/DailyTallyDetails";
 import CloseDailyTally from "../pages/tally/CloseDailyTally";
+import IncomeReport from "../pages/reports/IncomeReport";
+import ExpenseReport from "../pages/reports/ExpenseReport";
+import DistributionReport from "../pages/reports/DistributionReport";
+import VolunteerReport from "../pages/reports/VolunteerReport";
+import DailyTallyReport from "../pages/reports/DailyTallyReport";
+import FestivalSummaryReport from "../pages/reports/FestivalSummary";
 
 const AppRoutes = () => {
   return (
@@ -56,7 +62,15 @@ const AppRoutes = () => {
             <Route path="/tally/:id" element={<DailyTallyDetails />} />
             <Route path="/tally/close" element={<CloseDailyTally />} />
 
+            {/* Reports Routes */}
             <Route path="/reports" element={<Reports />} />
+            <Route path="/reports/income" element={<IncomeReport />} />
+            <Route path="/reports/expense" element={<ExpenseReport />} />
+            <Route path="/reports/distribution" element={<DistributionReport />} />
+            <Route path="/reports/volunteers" element={<VolunteerReport />} />
+            <Route path="/reports/daily-tally" element={<DailyTallyReport />} />
+            <Route path="/reports/festival-summary" element={<FestivalSummaryReport />} />
+
             <Route path="/volunteers" element={<Volunteers />} />
             <Route path="/settings" element={<Settings />} />
           </Route>

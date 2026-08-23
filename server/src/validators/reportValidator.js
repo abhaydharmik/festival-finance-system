@@ -97,9 +97,6 @@ const validateReportFilters = (data = {}) => {
     throw new ApiError(400, "Invalid status");
   }
 
-  if (status && !validStatuses.includes(status)) {
-    throw new ApiError(400, "Invalid status");
-  }
 };
 
 module.exports = {
