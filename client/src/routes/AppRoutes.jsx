@@ -28,6 +28,9 @@ import DistributionReport from "../pages/reports/DistributionReport";
 import VolunteerReport from "../pages/reports/VolunteerReport";
 import DailyTallyReport from "../pages/reports/DailyTallyReport";
 import FestivalSummaryReport from "../pages/reports/FestivalSummary";
+import AddFestival from "../pages/festivals/AddFestival";
+import FestivalDetails from "../pages/festivals/FestivalDetails";
+import EditFestival from "../pages/festivals/EditFestival";
 
 const AppRoutes = () => {
   return (
@@ -40,6 +43,9 @@ const AppRoutes = () => {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/festivals" element={<Festivals />} />
+            <Route path="/festivals/:id" element={<FestivalDetails />} />
+            <Route path="/festivals/create" element={<AddFestival />} />
+            <Route path="/festivals/:id/edit" element={<EditFestival />} />
 
             {/* Income Routes */}
             <Route path="/income" element={<Income />} />
@@ -66,12 +72,19 @@ const AppRoutes = () => {
             <Route path="/reports" element={<Reports />} />
             <Route path="/reports/income" element={<IncomeReport />} />
             <Route path="/reports/expense" element={<ExpenseReport />} />
-            <Route path="/reports/distribution" element={<DistributionReport />} />
+            <Route
+              path="/reports/distribution"
+              element={<DistributionReport />}
+            />
             <Route path="/reports/volunteers" element={<VolunteerReport />} />
             <Route path="/reports/daily-tally" element={<DailyTallyReport />} />
-            <Route path="/reports/festival-summary" element={<FestivalSummaryReport />} />
+            <Route
+              path="/reports/festival-summary"
+              element={<FestivalSummaryReport />}
+            />
 
             <Route path="/volunteers" element={<Volunteers />} />
+
             <Route path="/settings" element={<Settings />} />
           </Route>
 
