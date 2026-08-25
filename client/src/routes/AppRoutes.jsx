@@ -31,6 +31,7 @@ import FestivalSummaryReport from "../pages/reports/FestivalSummary";
 import AddFestival from "../pages/festivals/AddFestival";
 import FestivalDetails from "../pages/festivals/FestivalDetails";
 import EditFestival from "../pages/festivals/EditFestival";
+import Profile from "../pages/settings/Profile";
 
 const AppRoutes = () => {
   return (
@@ -86,6 +87,7 @@ const AppRoutes = () => {
             <Route path="/volunteers" element={<Volunteers />} />
 
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/profile" element={<Profile />} />
           </Route>
 
           {/* Admin */}
