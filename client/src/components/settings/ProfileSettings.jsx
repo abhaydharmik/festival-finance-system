@@ -1,6 +1,7 @@
 import React from "react";
 import { Lock, Mail, Phone, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 import { useAuth } from "../../context/AuthContext";
 
 const ProfileSettings = () => {
@@ -10,18 +11,8 @@ const ProfileSettings = () => {
   const profile = user || {};
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-
-        <p className="mt-1 text-sm text-gray-500">
-          View your account information and manage your password.
-        </p>
-      </div>
-
-      {/* Profile information */}
+    <div className="space-y-6">
+      {/* Profile Information */}
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-5">

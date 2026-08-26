@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-import { getFestivals } from "../services/festival.service";
+import { getFestivals } from "../services/festivalService";
 
 const FestivalContext = createContext(null);
 

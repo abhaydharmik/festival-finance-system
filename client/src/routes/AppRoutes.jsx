@@ -32,6 +32,11 @@ import AddFestival from "../pages/festivals/AddFestival";
 import FestivalDetails from "../pages/festivals/FestivalDetails";
 import EditFestival from "../pages/festivals/EditFestival";
 import Profile from "../pages/settings/Profile";
+import PaymentMethods from "../pages/settings/PaymentMethods";
+import SystemPreferences from "../pages/settings/SystemPreferences";
+import FestivalSettings from "../pages/settings/FestivalSettings";
+import { FestivalProvider } from "../context/FestivalContext";
+import ChangePassword from "../pages/settings/ChangePassword";
 
 const AppRoutes = () => {
   return (
@@ -41,7 +46,13 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         {/* Protected */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
+          <Route
+            element={
+              <FestivalProvider>
+                <MainLayout />
+              </FestivalProvider>
+            }
+          >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/festivals" element={<Festivals />} />
             <Route path="/festivals/:id" element={<FestivalDetails />} />
@@ -88,6 +99,16 @@ const AppRoutes = () => {
 
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/profile" element={<Profile />} />
+            <Route
+              path="/settings/change-password"
+              element={<ChangePassword />}
+            />
+            <Route path="/settings/festivals" element={<FestivalSettings />} />
+            <Route
+              path="/settings/payment-methods"
+              element={<PaymentMethods />}
+            />
+            <Route path="/settings/system" element={<SystemPreferences />} />
           </Route>
 
           {/* Admin */}

@@ -1,16 +1,14 @@
 import React from "react";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import PaymentMethodSettings from "../../components/settings/PaymentMethodSettings";
 
-import ProfileSettings from "../../components/settings/ProfileSettings";
-
-const Profile = () => {
+const PaymentMethods = () => {
   const navigate = useNavigate();
 
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -22,17 +20,20 @@ const Profile = () => {
         </button>
 
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
 
           <p className="mt-1 text-sm text-gray-500">
-            View and manage your profile information.
+            View the payment methods currently supported by the system.
           </p>
         </div>
       </div>
 
-      <ProfileSettings />
+      {/* Payment Methods */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <PaymentMethodSettings />
+      </section>
     </div>
   );
 };
 
-export default Profile;
+export default PaymentMethods;
