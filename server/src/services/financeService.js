@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const {
   DISTRIBUTION_STATUS,
 } = require("../constants/cashDistributionConstants");
@@ -11,17 +13,45 @@ const Expense = require("../models/Expense");
 const Income = require("../models/Income");
 
 // =====================================================
-// GET TODAY RANGE
+// GET FESTIVAL OBJECT ID
+// =====================================================
+
+const getFestivalObjectId = (festivalId) => {
+  if (!festivalId) {
+    return null;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new Error("Invalid festival ID");
+  }
+
+  return new mongoose.Types.ObjectId(festivalId);
+};
+
+// =====================================================
+// GET TODAY RANGE - INDIA TIMEZONE
 // =====================================================
 
 const getTodayRange = () => {
   const now = new Date();
 
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
+  // Get today's date according to India timezone
+  const indiaDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 
-  const endOfDay = new Date(now);
-  endOfDay.setHours(23, 59, 59, 999);
+  /*
+    indiaDate example:
+
+    2026-08-27
+  */
+
+  const startOfDay = new Date(`${indiaDate}T00:00:00+05:30`);
+
+  const endOfDay = new Date(`${indiaDate}T23:59:59.999+05:30`);
 
   return {
     startOfDay,
@@ -43,8 +73,10 @@ const getOverallBalance = async (festivalId = null) => {
   };
 
   if (festivalId) {
-    incomeMatch.festivalId = festivalId;
-    expenseMatch.festivalId = festivalId;
+    const festivalObjectId = getFestivalObjectId(festivalId);
+
+    incomeMatch.festivalId = festivalObjectId;
+    expenseMatch.festivalId = festivalObjectId;
   }
 
   const [income, expense] = await Promise.all([
@@ -52,9 +84,11 @@ const getOverallBalance = async (festivalId = null) => {
       {
         $match: incomeMatch,
       },
+
       {
         $group: {
           _id: null,
+
           total: {
             $sum: "$amount",
           },
@@ -66,9 +100,11 @@ const getOverallBalance = async (festivalId = null) => {
       {
         $match: expenseMatch,
       },
+
       {
         $group: {
           _id: null,
+
           total: {
             $sum: "$amount",
           },
@@ -77,8 +113,8 @@ const getOverallBalance = async (festivalId = null) => {
     ]),
   ]);
 
-  const totalIncome = income[0]?.total || 0;
-  const totalExpense = expense[0]?.total || 0;
+  const totalIncome = Number(income[0]?.total || 0);
+  const totalExpense = Number(expense[0]?.total || 0);
 
   return {
     totalIncome,
@@ -94,32 +130,53 @@ const getOverallBalance = async (festivalId = null) => {
 const getTodaySummary = async (festivalId = null) => {
   const { startOfDay, endOfDay } = getTodayRange();
 
+  // ---------------------------------------------------
+  // INCOME FILTER
+  // ---------------------------------------------------
+
   const incomeMatch = {
     isCancelled: false,
+
     createdAt: {
       $gte: startOfDay,
       $lte: endOfDay,
     },
   };
+
+  // ---------------------------------------------------
+  // EXPENSE FILTER
+  // ---------------------------------------------------
 
   const expenseMatch = {
     isCancelled: false,
-    createdAt: {
+
+    expenseDate: {
       $gte: startOfDay,
       $lte: endOfDay,
     },
   };
 
+  // ---------------------------------------------------
+  // FESTIVAL FILTER
+  // ---------------------------------------------------
+
   if (festivalId) {
-    incomeMatch.festivalId = festivalId;
-    expenseMatch.festivalId = festivalId;
+    const festivalObjectId = getFestivalObjectId(festivalId);
+
+    incomeMatch.festivalId = festivalObjectId;
+    expenseMatch.festivalId = festivalObjectId;
   }
+
+  // ---------------------------------------------------
+  // GET DATA
+  // ---------------------------------------------------
 
   const [income, expense] = await Promise.all([
     Income.aggregate([
       {
         $match: incomeMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -139,6 +196,7 @@ const getTodaySummary = async (festivalId = null) => {
       {
         $match: expenseMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -155,15 +213,24 @@ const getTodaySummary = async (festivalId = null) => {
     ]),
   ]);
 
-  const todayIncome = income[0]?.totalIncome || 0;
-  const todayExpense = expense[0]?.totalExpense || 0;
+  const todayIncome = Number(income[0]?.totalIncome || 0);
+
+  const todayExpense = Number(expense[0]?.totalExpense || 0);
+
+  const todayDonations = Number(income[0]?.donations || 0);
+
+  const todayExpenses = Number(expense[0]?.expenses || 0);
 
   return {
     todayIncome,
+
     todayExpense,
+
     todayBalance: todayIncome - todayExpense,
-    todayDonations: income[0]?.donations || 0,
-    todayExpenses: expense[0]?.expenses || 0,
+
+    todayDonations,
+
+    todayExpenses,
   };
 };
 
@@ -177,16 +244,21 @@ const getIncomeBreakdown = async (festivalId = null) => {
   };
 
   if (festivalId) {
-    match.festivalId = festivalId;
+    match.festivalId = getFestivalObjectId(festivalId);
   }
 
   const summary = await Income.aggregate([
     {
       $match: match,
     },
+
     {
       $group: {
         _id: null,
+
+        // ---------------------------------------------
+        // CASH INCOME
+        // ---------------------------------------------
 
         cashIncome: {
           $sum: {
@@ -194,11 +266,17 @@ const getIncomeBreakdown = async (festivalId = null) => {
               {
                 $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH],
               },
+
               "$amount",
+
               0,
             ],
           },
         },
+
+        // ---------------------------------------------
+        // ONLINE INCOME
+        // ---------------------------------------------
 
         onlineIncome: {
           $sum: {
@@ -206,14 +284,21 @@ const getIncomeBreakdown = async (festivalId = null) => {
               {
                 $in: [
                   "$paymentMode",
+
                   [INCOME_PAYMENT_MODE.BANK, INCOME_PAYMENT_MODE.UPI],
                 ],
               },
+
               "$amount",
+
               0,
             ],
           },
         },
+
+        // ---------------------------------------------
+        // TOTAL INCOME
+        // ---------------------------------------------
 
         totalIncome: {
           $sum: "$amount",
@@ -242,22 +327,32 @@ const getDistributionMetrics = async (festivalId = null) => {
 
   const expenseMatch = {
     isCancelled: false,
+
     distributionId: {
       $exists: true,
+
       $ne: null,
     },
   };
 
   if (festivalId) {
-    distributionMatch.festivalId = festivalId;
-    expenseMatch.festivalId = festivalId;
+    const festivalObjectId = getFestivalObjectId(festivalId);
+
+    distributionMatch.festivalId = festivalObjectId;
+
+    expenseMatch.festivalId = festivalObjectId;
   }
 
   const [distributionSummary, expenseSummary] = await Promise.all([
+    // -------------------------------------------------
+    // CASH DISTRIBUTION
+    // -------------------------------------------------
+
     CashDistribution.aggregate([
       {
         $match: distributionMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -276,7 +371,9 @@ const getDistributionMetrics = async (festivalId = null) => {
                 {
                   $eq: ["$status", DISTRIBUTION_STATUS.PENDING],
                 },
+
                 1,
+
                 0,
               ],
             },
@@ -285,10 +382,15 @@ const getDistributionMetrics = async (festivalId = null) => {
       },
     ]),
 
+    // -------------------------------------------------
+    // DISTRIBUTION EXPENSE
+    // -------------------------------------------------
+
     Expense.aggregate([
       {
         $match: expenseMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -307,16 +409,31 @@ const getDistributionMetrics = async (festivalId = null) => {
     pendingSettlements: 0,
   };
 
-  const distributionExpense = expenseSummary[0]?.distributionExpense || 0;
+  const cashDistributed = Number(result.cashDistributed || 0);
+
+  const cashReturned = Number(result.cashReturned || 0);
+
+  const pendingSettlements = Number(result.pendingSettlements || 0);
+
+  const distributionExpense = Number(
+    expenseSummary[0]?.distributionExpense || 0,
+  );
 
   const cashWithVolunteers = Math.max(
     0,
-    result.cashDistributed - result.cashReturned - distributionExpense,
+
+    cashDistributed - cashReturned - distributionExpense,
   );
 
   return {
-    ...result,
+    cashDistributed,
+
+    cashReturned,
+
+    pendingSettlements,
+
     distributionExpense,
+
     cashWithVolunteers,
   };
 };
@@ -339,32 +456,56 @@ const getRecentActivity = async (festivalId = null) => {
   };
 
   if (festivalId) {
-    incomeFilter.festivalId = festivalId;
-    expenseFilter.festivalId = festivalId;
-    distributionFilter.festivalId = festivalId;
+    const festivalObjectId = getFestivalObjectId(festivalId);
+
+    incomeFilter.festivalId = festivalObjectId;
+
+    expenseFilter.festivalId = festivalObjectId;
+
+    distributionFilter.festivalId = festivalObjectId;
   }
 
   const [income, expense, distribution] = await Promise.all([
+    // -------------------------------------------------
+    // RECENT INCOME
+    // -------------------------------------------------
+
     Income.find(incomeFilter)
       .select("donorName amount paymentMode createdAt")
-      .sort({ createdAt: -1 })
+      .sort({
+        createdAt: -1,
+      })
       .limit(5),
 
+    // -------------------------------------------------
+    // RECENT EXPENSE
+    // -------------------------------------------------
+
     Expense.find(expenseFilter)
-      .select("description amount category paymentMode createdAt")
-      .sort({ createdAt: -1 })
+      .select("description amount category paymentMode expenseDate createdAt")
+      .sort({
+        createdAt: -1,
+      })
       .limit(5),
+
+    // -------------------------------------------------
+    // RECENT DISTRIBUTION
+    // -------------------------------------------------
 
     CashDistribution.find(distributionFilter)
       .populate("volunteerId", "name")
       .select("distributionNumber amountGiven volunteerId createdAt")
-      .sort({ createdAt: -1 })
+      .sort({
+        createdAt: -1,
+      })
       .limit(5),
   ]);
 
   return {
     income,
+
     expense,
+
     distribution,
   };
 };
@@ -381,21 +522,27 @@ const getTodayIncomeBreakdown = async (festivalId = null) => {
 
     createdAt: {
       $gte: startOfDay,
+
       $lte: endOfDay,
     },
   };
 
   if (festivalId) {
-    match.festivalId = festivalId;
+    match.festivalId = getFestivalObjectId(festivalId);
   }
 
   const summary = await Income.aggregate([
     {
       $match: match,
     },
+
     {
       $group: {
         _id: null,
+
+        // ---------------------------------------------
+        // CASH
+        // ---------------------------------------------
 
         cashIncome: {
           $sum: {
@@ -403,11 +550,17 @@ const getTodayIncomeBreakdown = async (festivalId = null) => {
               {
                 $eq: ["$paymentMode", INCOME_PAYMENT_MODE.CASH],
               },
+
               "$amount",
+
               0,
             ],
           },
         },
+
+        // ---------------------------------------------
+        // ONLINE
+        // ---------------------------------------------
 
         onlineIncome: {
           $sum: {
@@ -415,14 +568,21 @@ const getTodayIncomeBreakdown = async (festivalId = null) => {
               {
                 $in: [
                   "$paymentMode",
+
                   [INCOME_PAYMENT_MODE.UPI, INCOME_PAYMENT_MODE.BANK],
                 ],
               },
+
               "$amount",
+
               0,
             ],
           },
         },
+
+        // ---------------------------------------------
+        // TOTAL
+        // ---------------------------------------------
 
         totalIncome: {
           $sum: "$amount",
@@ -450,23 +610,33 @@ const getTodayExpenseSummary = async (festivalId = null) => {
   const match = {
     isCancelled: false,
 
-    createdAt: {
+    // IMPORTANT:
+    // Use expenseDate instead of createdAt
+    // because this represents the actual expense date.
+
+    expenseDate: {
       $gte: startOfDay,
+
       $lte: endOfDay,
     },
   };
 
   if (festivalId) {
-    match.festivalId = festivalId;
+    match.festivalId = getFestivalObjectId(festivalId);
   }
 
   const summary = await Expense.aggregate([
     {
       $match: match,
     },
+
     {
       $group: {
         _id: null,
+
+        // ---------------------------------------------
+        // CASH EXPENSE
+        // ---------------------------------------------
 
         cashExpense: {
           $sum: {
@@ -474,11 +644,17 @@ const getTodayExpenseSummary = async (festivalId = null) => {
               {
                 $eq: ["$paymentMode", EXPENSE_PAYMENT_MODE.CASH],
               },
+
               "$amount",
+
               0,
             ],
           },
         },
+
+        // ---------------------------------------------
+        // ONLINE EXPENSE
+        // ---------------------------------------------
 
         onlineExpense: {
           $sum: {
@@ -486,6 +662,7 @@ const getTodayExpenseSummary = async (festivalId = null) => {
               {
                 $in: [
                   "$paymentMode",
+
                   [
                     EXPENSE_PAYMENT_MODE.UPI,
                     EXPENSE_PAYMENT_MODE.BANK,
@@ -493,11 +670,17 @@ const getTodayExpenseSummary = async (festivalId = null) => {
                   ],
                 ],
               },
+
               "$amount",
+
               0,
             ],
           },
         },
+
+        // ---------------------------------------------
+        // TOTAL EXPENSE
+        // ---------------------------------------------
 
         totalExpense: {
           $sum: "$amount",
@@ -527,6 +710,7 @@ const getTodayDistributionSummary = async (festivalId = null) => {
 
     createdAt: {
       $gte: startOfDay,
+
       $lte: endOfDay,
     },
   };
@@ -536,25 +720,35 @@ const getTodayDistributionSummary = async (festivalId = null) => {
 
     distributionId: {
       $exists: true,
+
       $ne: null,
     },
 
-    createdAt: {
+    expenseDate: {
       $gte: startOfDay,
+
       $lte: endOfDay,
     },
   };
 
   if (festivalId) {
-    distributionMatch.festivalId = festivalId;
-    expenseMatch.festivalId = festivalId;
+    const festivalObjectId = getFestivalObjectId(festivalId);
+
+    distributionMatch.festivalId = festivalObjectId;
+
+    expenseMatch.festivalId = festivalObjectId;
   }
 
   const [distributionSummary, expenseSummary] = await Promise.all([
+    // -------------------------------------------------
+    // TODAY DISTRIBUTIONS
+    // -------------------------------------------------
+
     CashDistribution.aggregate([
       {
         $match: distributionMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -570,10 +764,15 @@ const getTodayDistributionSummary = async (festivalId = null) => {
       },
     ]),
 
+    // -------------------------------------------------
+    // TODAY DISTRIBUTION EXPENSE
+    // -------------------------------------------------
+
     Expense.aggregate([
       {
         $match: expenseMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -591,19 +790,25 @@ const getTodayDistributionSummary = async (festivalId = null) => {
     cashReturned: 0,
   };
 
-  const distributionExpense = expenseSummary[0]?.distributionExpense || 0;
+  const cashDistributed = Number(distribution.cashDistributed || 0);
+
+  const cashReturned = Number(distribution.cashReturned || 0);
+
+  const distributionExpense = Number(
+    expenseSummary[0]?.distributionExpense || 0,
+  );
 
   return {
-    cashDistributed: distribution.cashDistributed,
-    cashReturned: distribution.cashReturned,
+    cashDistributed,
+
+    cashReturned,
 
     distributionExpense,
 
     cashWithVolunteers: Math.max(
       0,
-      distribution.cashDistributed -
-        distribution.cashReturned -
-        distributionExpense,
+
+      cashDistributed - cashReturned - distributionExpense,
     ),
   };
 };
@@ -615,39 +820,79 @@ const getTodayDistributionSummary = async (festivalId = null) => {
 const getClosingSummary = async (festivalId = null) => {
   const [income, expense, distribution] = await Promise.all([
     getTodayIncomeBreakdown(festivalId),
+
     getTodayExpenseSummary(festivalId),
+
     getTodayDistributionSummary(festivalId),
   ]);
 
-  const totalIncome = income.cashIncome + income.onlineIncome;
+  const cashIncome = Number(income.cashIncome || 0);
+
+  const onlineIncome = Number(income.onlineIncome || 0);
+
+  const totalIncome = cashIncome + onlineIncome;
+
+  const cashExpense = Number(expense.cashExpense || 0);
+
+  const onlineExpense = Number(expense.onlineExpense || 0);
+
+  const totalExpense = Number(expense.totalExpense || 0);
 
   return {
-    // Income
-    cashIncome: income.cashIncome,
-    onlineIncome: income.onlineIncome,
+    // -------------------------------------------------
+    // INCOME
+    // -------------------------------------------------
+
+    cashIncome,
+
+    onlineIncome,
+
     totalIncome,
 
-    // Expense
-    cashExpense: expense.cashExpense,
-    onlineExpense: expense.onlineExpense,
-    totalExpense: expense.totalExpense,
+    // -------------------------------------------------
+    // EXPENSE
+    // -------------------------------------------------
 
-    // Distribution
-    cashDistributed: distribution.cashDistributed,
-    cashReturned: distribution.cashReturned,
-    distributionExpense: distribution.distributionExpense || 0,
-    cashWithVolunteers: distribution.cashWithVolunteers,
+    cashExpense,
+
+    onlineExpense,
+
+    totalExpense,
+
+    // -------------------------------------------------
+    // DISTRIBUTION
+    // -------------------------------------------------
+
+    cashDistributed: Number(distribution.cashDistributed || 0),
+
+    cashReturned: Number(distribution.cashReturned || 0),
+
+    distributionExpense: Number(distribution.distributionExpense || 0),
+
+    cashWithVolunteers: Number(distribution.cashWithVolunteers || 0),
   };
 };
 
+// =====================================================
+// EXPORT
+// =====================================================
+
 module.exports = {
   getOverallBalance,
+
   getTodaySummary,
+
   getIncomeBreakdown,
+
   getDistributionMetrics,
+
   getRecentActivity,
+
   getTodayIncomeBreakdown,
+
   getTodayExpenseSummary,
+
   getTodayDistributionSummary,
+
   getClosingSummary,
 };

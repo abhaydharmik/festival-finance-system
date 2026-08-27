@@ -11,17 +11,26 @@ import toast from "react-hot-toast";
 
 import dashboardService from "../../services/dashboardService";
 import FinancialCharts from "../../components/dashboard/FinancialCharts";
+import { useFestival } from "../../context/FestivalContext";
 
 const Dashboard = () => {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
   const fetchDashboard = async () => {
     try {
       setLoading(true);
 
-      const response = await dashboardService.getDashboard();
+      if (!currentFestival?._id) {
+        setDashboard(null);
+        return;
+      }
 
+      const response = await dashboardService.getDashboard(currentFestival._id);
+
+      console.log(response)
       setDashboard(response);
     } catch (error) {
       console.error("Dashboard error:", error);
@@ -33,10 +42,12 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashboard();
-  }, []);
+    if (!festivalLoading) {
+      fetchDashboard();
+    }
+  }, [currentFestival?._id, festivalLoading]);
 
-  if (loading) {
+  if (loading || festivalLoading) {
     return (
       <div className="flex min-h-100 items-center justify-center">
         <div className="flex items-center gap-2 text-gray-600">

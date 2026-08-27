@@ -1,25 +1,39 @@
-const { FESTIVAL_STATUS } = require("../constants/festivalConstants");
+const mongoose = require("mongoose");
+
 const Festival = require("../models/Festival");
+const ApiError = require("../utils/ApiError");
 
 const financeService = require("../services/financeService");
 
-const getDashboard = async () => {
-  const [festival, today, income, balance, distribution, recentActivity] =
+const getDashboard = async (festivalId) => {
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
+  }
+
+  const festival = await Festival.findOne({
+    _id: festivalId,
+    isActive: true,
+  }).select("name year festivalCode status");
+
+  if (!festival) {
+    throw new ApiError(404, "Festival not found");
+  }
+
+  const [today, income, balance, distribution, recentActivity] =
     await Promise.all([
-      Festival.findOne({
-        status: FESTIVAL_STATUS.ACTIVE,
-        isActive: true,
-      }).select("name year festivalCode status"),
+      financeService.getTodaySummary(festivalId),
 
-      financeService.getTodaySummary(),
+      financeService.getIncomeBreakdown(festivalId),
 
-      financeService.getIncomeBreakdown(),
+      financeService.getOverallBalance(festivalId),
 
-      financeService.getOverallBalance(),
+      financeService.getDistributionMetrics(festivalId),
 
-      financeService.getDistributionMetrics(),
-
-      financeService.getRecentActivity(),
+      financeService.getRecentActivity(festivalId),
     ]);
 
   return {
