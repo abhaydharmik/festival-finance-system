@@ -37,6 +37,7 @@ import SystemPreferences from "../pages/settings/SystemPreferences";
 import FestivalSettings from "../pages/settings/FestivalSettings";
 import { FestivalProvider } from "../context/FestivalContext";
 import ChangePassword from "../pages/settings/ChangePassword";
+import EditIncome from "../pages/income/EditIncome";
 
 const AppRoutes = () => {
   return (
@@ -63,6 +64,7 @@ const AppRoutes = () => {
             <Route path="/income" element={<Income />} />
             <Route path="/income/add" element={<AddIncome />} />
             <Route path="/income/:id" element={<IncomeDetails />} />
+            <Route path="/income/:id/edit" element={<EditIncome />} />
 
             {/* Expense Routes */}
             <Route path="/expenses" element={<Expenses />} />

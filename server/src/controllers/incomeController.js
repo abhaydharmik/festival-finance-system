@@ -59,7 +59,7 @@ const cancelIncome = asyncHandler(async (req, res) => {
 // Income Summary
 
 const getIncomeSummary = asyncHandler(async (req, res) => {
-  const summary = await incomeService.getIncomeSummary();
+  const summary = await incomeService.getIncomeSummary(req.query.festivalId);
 
   return res
     .status(200)

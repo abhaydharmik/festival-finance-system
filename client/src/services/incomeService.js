@@ -34,8 +34,10 @@ const cancelIncome = async (id, cancelReason) => {
   return response.data;
 };
 
-const getIncomeSummary = async () => {
-  const response = await api.get("/income/summary");
+const getIncomeSummary = async (params = {}) => {
+  const response = await api.get("/income/summary", {
+    params,
+  });
 
   return response.data;
 };

@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
-import { createIncome } from "../../services/incomeService";
-import { useFestival } from "../../context/FestivalContext";
+import { getIncomeById, updateIncome } from "../../services/incomeService";
 
-const AddIncome = () => {
+const EditIncome = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const { currentFestival, loading: festivalLoading } = useFestival();
-
+  const [income, setIncome] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
@@ -23,6 +23,54 @@ const AddIncome = () => {
     remarks: "",
   });
 
+  // ----------------------------------
+  // Fetch Income
+  // ----------------------------------
+
+  const fetchIncome = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getIncomeById(id);
+
+      const data = response.data;
+
+      if (!data) {
+        toast.error("Income record not found");
+        navigate("/income");
+        return;
+      }
+
+      setIncome(data);
+
+      setForm({
+        donorName: data.donorName || "",
+        mobile: data.mobile || "",
+        amount: data.amount || "",
+        paymentMode: data.paymentMode || "cash",
+        category: data.category || "donation",
+        referenceNumber: data.referenceNumber || "",
+        remarks: data.remarks || "",
+      });
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to load income record",
+      );
+
+      navigate("/income");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchIncome();
+  }, [id]);
+
+  // ----------------------------------
+  // Handle Change
+  // ----------------------------------
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -32,28 +80,18 @@ const AddIncome = () => {
     }));
   };
 
+  // ----------------------------------
+  // Submit
+  // ----------------------------------
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Festival check
-    if (!currentFestival) {
-      toast.error("Please select a festival first");
-      return;
-    }
-
-    // Only active festival can receive income
-    if (currentFestival.status !== "active" || !currentFestival.isActive) {
-      toast.error("Income can only be added to an active festival");
-      return;
-    }
-
-    // Donor validation
     if (!form.donorName.trim()) {
       toast.error("Donor name is required");
       return;
     }
 
-    // Amount validation
     if (!form.amount || Number(form.amount) <= 0) {
       toast.error("Amount must be greater than zero");
       return;
@@ -62,8 +100,7 @@ const AddIncome = () => {
     try {
       setSubmitting(true);
 
-      await createIncome({
-        festivalId: currentFestival._id,
+      await updateIncome(id, {
         donorName: form.donorName.trim(),
         mobile: form.mobile.trim(),
         amount: Number(form.amount),
@@ -73,50 +110,62 @@ const AddIncome = () => {
         remarks: form.remarks.trim(),
       });
 
-      toast.success("Income recorded successfully");
+      toast.success("Income updated successfully");
 
-      navigate("/income");
+      navigate(`/income/${id}`);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to record income");
+      toast.error(error.response?.data?.message || "Failed to update income");
     } finally {
       setSubmitting(false);
     }
   };
 
   // ----------------------------------
-  // Festival Loading
+  // Loading
   // ----------------------------------
 
-  if (festivalLoading) {
+  if (loading) {
     return (
       <div className="flex min-h-100 items-center justify-center">
-        <p className="text-sm text-gray-500">Loading festival...</p>
+        <p className="text-sm text-gray-500">Loading income...</p>
       </div>
     );
   }
 
   // ----------------------------------
-  // No Festival Selected
+  // Not Found
   // ----------------------------------
 
-  if (!currentFestival) {
+  if (!income) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        Income record not found.
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // Cancelled Record
+  // ----------------------------------
+
+  if (income.isCancelled) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="rounded-xl border bg-white p-8 text-center">
-          <h2 className="text-lg font-semibold text-gray-900">
-            No Festival Selected
+        <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
+          <h2 className="text-lg font-semibold text-red-700">
+            Receipt Cannot Be Edited
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
-            Please select a festival before recording income.
+          <p className="mt-2 text-sm text-red-600">
+            This income receipt has already been cancelled.
           </p>
 
           <button
             type="button"
-            onClick={() => navigate("/settings/festivals")}
+            onClick={() => navigate(`/income/${id}`)}
             className="mt-5 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
           >
-            Select Festival
+            Back to Details
           </button>
         </div>
       </div>
@@ -134,42 +183,50 @@ const AddIncome = () => {
       <div className="flex items-center gap-4">
         <button
           type="button"
-          onClick={() => navigate("/income")}
+          onClick={() => navigate(`/income/${id}`)}
           className="rounded-lg border p-2 hover:bg-gray-50"
         >
           <ArrowLeft size={20} />
         </button>
 
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Add Income</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Income</h1>
 
           <p className="text-sm text-gray-500">
-            Record a new festival income or donation
+            Update income receipt {income.receiptNumber}
           </p>
         </div>
       </div>
 
-      {/* Current Festival */}
+      {/* Receipt Information */}
 
       <div className="rounded-xl border bg-white p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-          Current Festival
-        </p>
-
-        <div className="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {currentFestival.name}
-            </h2>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              Receipt Number
+            </p>
 
-            <p className="text-sm text-gray-500">
-              {currentFestival.year} • {currentFestival.festivalCode}
+            <p className="mt-1 text-sm font-semibold text-gray-900">
+              {income.receiptNumber}
             </p>
           </div>
 
-          <span className="w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-medium capitalize text-green-700">
-            {currentFestival.status}
-          </span>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              Festival
+            </p>
+
+            <p className="mt-1 text-sm font-semibold text-gray-900">
+              {income.festivalId?.name || "-"}
+            </p>
+
+            {income.festivalId && (
+              <p className="text-xs text-gray-500">
+                {income.festivalId.year} • {income.festivalId.festivalCode}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -273,7 +330,7 @@ const AddIncome = () => {
             name="referenceNumber"
             value={form.referenceNumber}
             onChange={handleChange}
-            placeholder="UPI / bank reference (optional)"
+            placeholder="UPI / bank reference"
             className="w-full rounded-lg border px-3 py-2 outline-none focus:border-black"
           />
         </div>
@@ -299,7 +356,7 @@ const AddIncome = () => {
         <div className="flex justify-end gap-3 border-t pt-5">
           <button
             type="button"
-            onClick={() => navigate("/income")}
+            onClick={() => navigate(`/income/${id}`)}
             className="rounded-lg border px-5 py-2 text-sm font-medium hover:bg-gray-50"
           >
             Cancel
@@ -310,7 +367,7 @@ const AddIncome = () => {
             disabled={submitting}
             className="rounded-lg bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Saving..." : "Save Income"}
+            {submitting ? "Updating..." : "Update Income"}
           </button>
         </div>
       </form>
@@ -318,4 +375,4 @@ const AddIncome = () => {
   );
 };
 
-export default AddIncome;
+export default EditIncome;

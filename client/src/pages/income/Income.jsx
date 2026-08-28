@@ -4,8 +4,11 @@ import { Plus } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { getAllIncome, getIncomeSummary } from "../../services/incomeService";
+import { useFestival } from "../../context/FestivalContext";
 
 const Income = () => {
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
   const [income, setIncome] = useState([]);
   const [summary, setSummary] = useState({
     totalIncome: 0,
@@ -25,12 +28,32 @@ const Income = () => {
     try {
       setLoading(true);
 
+      if (!currentFestival?._id) {
+        setIncome([]);
+        setSummary({
+          totalIncome: 0,
+          totalReceipts: 0,
+        });
+        return;
+      }
+
+      const incomeParams = {
+        ...filters,
+        festivalId: currentFestival._id,
+      };
+
       const [incomeResponse, summaryResponse] = await Promise.all([
-        getAllIncome(filters),
-        getIncomeSummary(),
+        getAllIncome({
+          ...filters,
+          festivalId: currentFestival?._id,
+        }),
+        getIncomeSummary({
+          festivalId: currentFestival?._id,
+        }),
       ]);
 
       setIncome(incomeResponse.data.income || []);
+
       setSummary(
         summaryResponse.data || {
           totalIncome: 0,
@@ -38,6 +61,8 @@ const Income = () => {
         },
       );
     } catch (error) {
+      console.error("Income error:", error);
+
       toast.error(error.response?.data?.message || "Failed to load income");
     } finally {
       setLoading(false);
@@ -45,8 +70,16 @@ const Income = () => {
   };
 
   useEffect(() => {
+    if (!currentFestival) return;
+
     fetchIncome();
-  }, [filters]);
+  }, [filters, currentFestival]);
+
+  useEffect(() => {
+    if (!festivalLoading) {
+      fetchIncome();
+    }
+  }, [filters, currentFestival?._id, festivalLoading]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
