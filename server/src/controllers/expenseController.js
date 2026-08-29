@@ -58,7 +58,9 @@ const cancelExpense = asyncHandler(async (req, res) => {
 
 // Get expense summary
 const getExpenseSummary = asyncHandler(async (req, res) => {
-  const summary = await expenseService.getExpenseSummary();
+  const { festivalId } = req.query;
+
+  const summary = await expenseService.getExpenseSummary(festivalId);
 
   return res
     .status(200)
