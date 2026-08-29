@@ -30,8 +30,10 @@ const cancelExpense = async (id, cancelReason) => {
   return response.data;
 };
 
-const getExpenseSummary = async () => {
-  const response = await api.get(`/expense/summary`);
+const getExpenseSummary = async (params = {}) => {
+  const response = await api.get("/expense/summary", {
+    params,
+  });
 
   return response.data;
 };

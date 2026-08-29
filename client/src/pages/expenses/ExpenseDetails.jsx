@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
-  Calendar,
   FileText,
   Pencil,
   Receipt,
@@ -11,15 +10,16 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import { getExpenseById } from "../../services/expenseService";
+import { getExpenseById, cancelExpense } from "../../services/expenseService";
+
 import { useAuth } from "../../context/AuthContext";
 
-const formatCurrency = (amount) => {
+const formatCurrency = (amount = 0) => {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 2,
-  }).format(amount || 0);
+  }).format(Number(amount) || 0);
 };
 
 const formatDate = (date) => {
@@ -53,11 +53,14 @@ const capitalize = (value) => {
 const ExpenseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const { user } = useAuth();
 
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     const fetchExpense = async () => {
@@ -66,11 +69,31 @@ const ExpenseDetails = () => {
 
         const response = await getExpenseById(id);
 
-        setExpense(response.data);
+        console.log("Expense details response:", response);
+
+        /*
+         * Expected service response:
+         *
+         * {
+         *   success: true,
+         *   data: { ...expense }
+         * }
+         *
+         * If your axios service returns response.data,
+         * then response itself may already be the API data.
+         */
+
+        const expenseData = response?.data ?? response;
+
+        if (!expenseData) {
+          throw new Error("Expense not found");
+        }
+
+        setExpense(expenseData);
       } catch (error) {
         console.error("Failed to fetch expense:", error);
 
-        toast.error(error.response?.data?.message || "Failed to load expense");
+        toast.error(error?.response?.data?.message || "Failed to load expense");
 
         navigate("/expenses");
       } finally {
@@ -78,7 +101,9 @@ const ExpenseDetails = () => {
       }
     };
 
-    fetchExpense();
+    if (id) {
+      fetchExpense();
+    }
   }, [id, navigate]);
 
   const handleCancel = async () => {
@@ -93,13 +118,19 @@ const ExpenseDetails = () => {
     try {
       setCancelling(true);
 
-      const updatedExpense = await cancelExpense(id, cancelReason.trim());
+      const response = await cancelExpense(id, cancelReason.trim());
+
+      console.log("Cancel expense response:", response);
+
+      const updatedExpense = response?.data ?? response;
 
       setExpense(updatedExpense);
 
       toast.success("Expense cancelled successfully");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to cancel expense");
+      console.error("Failed to cancel expense:", error);
+
+      toast.error(error?.response?.data?.message || "Failed to cancel expense");
     } finally {
       setCancelling(false);
     }
@@ -108,18 +139,33 @@ const ExpenseDetails = () => {
   if (loading) {
     return (
       <div className="flex min-h-100 items-center justify-center">
-        <div className="text-sm text-gray-500">Loading expense...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-black" />
+
+          <p className="text-sm text-gray-500">Loading expense...</p>
+        </div>
       </div>
     );
   }
 
   if (!expense) {
-    return null;
+    return (
+      <div className="flex min-h-100 flex-col items-center justify-center">
+        <Receipt size={40} className="mb-3 text-gray-300" />
+
+        <h2 className="font-semibold text-gray-900">Expense not found</h2>
+
+        <Link
+          to="/expenses"
+          className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          Back to Expenses
+        </Link>
+      </div>
+    );
   }
 
   const isCancelled = expense.isCancelled || expense.status === "cancelled";
-
-  const isAdmin = user?.role === "admin";
 
   return (
     <div className="space-y-6">
@@ -136,7 +182,7 @@ const ExpenseDetails = () => {
 
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-gray-100 p-2">
-              <Receipt size={22} />
+              <Receipt size={22} className="text-gray-700" />
             </div>
 
             <div>
@@ -144,14 +190,16 @@ const ExpenseDetails = () => {
                 Expense Details
               </h1>
 
-              <p className="text-sm text-gray-500">{expense.voucherNumber}</p>
+              <p className="text-sm text-gray-500">
+                {expense.voucherNumber || "-"}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Admin actions */}
+        {/* Admin Actions */}
         {isAdmin && !isCancelled && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link
               to={`/expenses/${expense._id}/edit`}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -164,9 +212,10 @@ const ExpenseDetails = () => {
               type="button"
               onClick={handleCancel}
               disabled={cancelling}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <XCircle size={16} />
+
               {cancelling ? "Cancelling..." : "Cancel Expense"}
             </button>
           </div>
@@ -177,7 +226,7 @@ const ExpenseDetails = () => {
       {isCancelled && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
           <div className="flex items-start gap-3">
-            <XCircle className="mt-0.5 text-red-600" size={20} />
+            <XCircle className="mt-0.5 shrink-0 text-red-600" size={20} />
 
             <div>
               <h3 className="font-semibold text-red-800">
@@ -219,12 +268,12 @@ const ExpenseDetails = () => {
         </div>
       </div>
 
-      {/* Main information */}
+      {/* Main Information */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Expense information */}
+        {/* Expense Information */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-2">
-            <FileText size={19} />
+            <FileText size={19} className="text-gray-700" />
 
             <h2 className="font-semibold text-gray-900">Expense Information</h2>
           </div>
@@ -237,6 +286,8 @@ const ExpenseDetails = () => {
             <InfoRow label="Description" value={expense.description} />
 
             <InfoRow label="Vendor" value={expense.vendorName || "-"} />
+
+            <InfoRow label="Amount" value={formatCurrency(expense.amount)} />
 
             <InfoRow
               label="Payment Mode"
@@ -254,13 +305,18 @@ const ExpenseDetails = () => {
               label="Reference Number"
               value={expense.referenceNumber || "-"}
             />
+
+            <InfoRow
+              label="Status"
+              value={isCancelled ? "Cancelled" : "Active"}
+            />
           </div>
         </div>
 
-        {/* Festival & User information */}
+        {/* Additional Information */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-2">
-            <User size={19} />
+            <User size={19} className="text-gray-700" />
 
             <h2 className="font-semibold text-gray-900">
               Additional Information
@@ -314,6 +370,27 @@ const ExpenseDetails = () => {
           <p className="text-sm leading-6 text-gray-600">{expense.remarks}</p>
         </div>
       )}
+
+      {/* Cancel Information */}
+      {isCancelled && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+          <h2 className="mb-3 font-semibold text-red-800">
+            Cancellation Information
+          </h2>
+
+          <div className="space-y-3">
+            <InfoRow
+              label="Cancel Reason"
+              value={expense.cancelReason || "-"}
+            />
+
+            <InfoRow
+              label="Cancelled At"
+              value={formatDateTime(expense.cancelledAt)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -323,8 +400,8 @@ const InfoRow = ({ label, value }) => {
     <div className="flex flex-col gap-1 border-b border-gray-100 pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <span className="text-sm text-gray-500">{label}</span>
 
-      <span className="text-sm font-medium text-gray-900 sm:text-right">
-        {value}
+      <span className="wrap-break-word text-sm font-medium text-gray-900 sm:max-w-[60%] sm:text-right">
+        {value || "-"}
       </span>
     </div>
   );

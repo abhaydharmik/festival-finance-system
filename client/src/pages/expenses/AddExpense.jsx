@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Save } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import {createExpense} from "../../services/expenseService";
-import api from "../../services/api";
+import { createExpense } from "../../services/expenseService";
+import { useFestival } from "../../context/FestivalContext";
 
 const categories = [
   { value: "food", label: "Food" },
@@ -30,13 +30,11 @@ const paymentModes = [
 const AddExpense = () => {
   const navigate = useNavigate();
 
-  const [festivals, setFestivals] = useState([]);
+  const { currentFestival, loading: festivalLoading } = useFestival();
 
-  const [loadingFestivals, setLoadingFestivals] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    festivalId: "",
     category: "",
     vendorName: "",
     description: "",
@@ -47,40 +45,6 @@ const AddExpense = () => {
     billNumber: "",
     remarks: "",
   });
-
-  useEffect(() => {
-    const fetchFestivals = async () => {
-      try {
-        const response = await api.get("/festivals");
-
-        const data = response.data.data;
-
-        const festivalList = Array.isArray(data) ? data : data?.festivals || [];
-
-        setFestivals(festivalList);
-
-        const activeFestival = festivalList.find(
-          (festival) =>
-            festival.status === "active" && festival.isActive !== false,
-        );
-
-        if (activeFestival) {
-          setFormData((prev) => ({
-            ...prev,
-            festivalId: activeFestival._id,
-          }));
-        }
-      } catch (error) {
-        toast.error(
-          error.response?.data?.message || "Failed to load festivals",
-        );
-      } finally {
-        setLoadingFestivals(false);
-      }
-    };
-
-    fetchFestivals();
-  }, []);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -94,26 +58,31 @@ const AddExpense = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!formData.festivalId) {
-      toast.error("Please select a festival");
+    // Festival validation
+    if (!currentFestival?._id) {
+      toast.error("No active festival selected");
       return;
     }
 
+    // Category validation
     if (!formData.category) {
       toast.error("Please select an expense category");
       return;
     }
 
+    // Description validation
     if (!formData.description.trim()) {
       toast.error("Description is required");
       return;
     }
 
+    // Amount validation
     if (!formData.amount || Number(formData.amount) <= 0) {
       toast.error("Enter a valid amount");
       return;
     }
 
+    // Payment mode validation
     if (!formData.paymentMode) {
       toast.error("Please select a payment mode");
       return;
@@ -123,7 +92,7 @@ const AddExpense = () => {
       setSubmitting(true);
 
       const payload = {
-        festivalId: formData.festivalId,
+        festivalId: currentFestival._id,
         category: formData.category,
         vendorName: formData.vendorName.trim(),
         description: formData.description.trim(),
@@ -135,13 +104,31 @@ const AddExpense = () => {
         remarks: formData.remarks.trim(),
       };
 
-      const expense = await createExpense(payload);
+      const response = await createExpense(payload);
 
       toast.success("Expense created successfully");
 
-      navigate(`/expenses/${expense._id}`);
+      /*
+       * Depending on your expenseService.js:
+       *
+       * If createExpense returns response.data:
+       * response._id
+       *
+       * If createExpense returns Axios response:
+       * response.data._id
+       */
+
+      const createdExpense = response?.data || response;
+
+      if (createdExpense?._id) {
+        navigate(`/expenses/${createdExpense._id}`);
+      } else {
+        navigate("/expenses");
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create expense");
+      console.error("Create expense error:", error);
+
+      toast.error(error?.response?.data?.message || "Failed to create expense");
     } finally {
       setSubmitting(false);
     }
@@ -163,9 +150,35 @@ const AddExpense = () => {
           <h1 className="text-2xl font-bold text-gray-900">Add Expense</h1>
 
           <p className="mt-1 text-sm text-gray-500">
-            Record a new festival expense.
+            Record a new expense for the current festival.
           </p>
         </div>
+      </div>
+
+      {/* Current Festival */}
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+          Current Festival
+        </p>
+
+        {festivalLoading ? (
+          <div className="mt-2 h-5 w-48 animate-pulse rounded bg-gray-200" />
+        ) : currentFestival ? (
+          <div className="mt-1">
+            <p className="font-semibold text-gray-900">
+              {currentFestival.name}
+              {currentFestival.year ? ` (${currentFestival.year})` : ""}
+            </p>
+
+            <p className="mt-1 text-xs text-gray-500">
+              This expense will be recorded under the selected festival.
+            </p>
+          </div>
+        ) : (
+          <p className="mt-1 text-sm text-red-600">
+            No active festival selected.
+          </p>
+        )}
       </div>
 
       {/* Form */}
@@ -174,31 +187,6 @@ const AddExpense = () => {
         className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
       >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Festival */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Festival *
-            </label>
-
-            <select
-              name="festivalId"
-              value={formData.festivalId}
-              onChange={handleChange}
-              disabled={loadingFestivals}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
-            >
-              <option value="">
-                {loadingFestivals ? "Loading festivals..." : "Select festival"}
-              </option>
-
-              {festivals.map((festival) => (
-                <option key={festival._id} value={festival._id}>
-                  {festival.name} {festival.year ? `(${festival.year})` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Category */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -209,7 +197,8 @@ const AddExpense = () => {
               name="category"
               value={formData.category}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={festivalLoading || !currentFestival}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             >
               <option value="">Select category</option>
 
@@ -233,7 +222,8 @@ const AddExpense = () => {
               value={formData.vendorName}
               onChange={handleChange}
               placeholder="Enter vendor name"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
@@ -251,11 +241,12 @@ const AddExpense = () => {
               value={formData.amount}
               onChange={handleChange}
               placeholder="Enter amount"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
-          {/* Payment mode */}
+          {/* Payment Mode */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Payment Mode *
@@ -265,7 +256,8 @@ const AddExpense = () => {
               name="paymentMode"
               value={formData.paymentMode}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             >
               <option value="">Select payment mode</option>
 
@@ -288,11 +280,12 @@ const AddExpense = () => {
               name="expenseDate"
               value={formData.expenseDate}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
-          {/* Reference */}
+          {/* Reference Number */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Reference Number
@@ -304,11 +297,12 @@ const AddExpense = () => {
               value={formData.referenceNumber}
               onChange={handleChange}
               placeholder="UPI / Bank reference"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
-          {/* Bill */}
+          {/* Bill Number */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Bill Number
@@ -320,7 +314,8 @@ const AddExpense = () => {
               value={formData.billNumber}
               onChange={handleChange}
               placeholder="Enter bill number"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
@@ -336,7 +331,8 @@ const AddExpense = () => {
               onChange={handleChange}
               rows={3}
               placeholder="Describe the expense"
-              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
@@ -352,7 +348,8 @@ const AddExpense = () => {
               onChange={handleChange}
               rows={3}
               placeholder="Optional remarks"
-              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900"
+              disabled={!currentFestival}
+              className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
         </div>
@@ -368,7 +365,7 @@ const AddExpense = () => {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || festivalLoading || !currentFestival}
             className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save size={17} />

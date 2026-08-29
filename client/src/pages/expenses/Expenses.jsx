@@ -16,13 +16,10 @@ import toast from "react-hot-toast";
 
 import {
   getAllExpenses,
-  getExpenseById,
-  createExpense,
-  updateExpense,
-  cancelExpense,
   getExpenseSummary,
 } from "../../services/expenseService";
 import { useAuth } from "../../context/AuthContext";
+import { useFestival } from "../../context/FestivalContext";
 
 const CATEGORY_OPTIONS = [
   { value: "", label: "All Categories" },
@@ -87,6 +84,7 @@ const getPaymentModeLabel = (paymentMode) => {
 
 const Expenses = () => {
   const { user } = useAuth();
+  const { currentFestival, loading: festivalLoading } = useFestival();
 
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState({
@@ -126,9 +124,24 @@ const Expenses = () => {
     try {
       setLoading(true);
 
+      // Wait until festival is available
+      if (!currentFestival?._id) {
+        setExpenses([]);
+
+        setPagination({
+          total: 0,
+          page: 1,
+          limit,
+          totalPages: 1,
+        });
+
+        return;
+      }
+
       const params = {
         page,
         limit,
+        festivalId: currentFestival._id,
       };
 
       if (search.trim()) params.search = search.trim();
@@ -141,6 +154,7 @@ const Expenses = () => {
       const response = await getAllExpenses(params);
 
       setExpenses(response?.data?.expenses || []);
+
       setPagination(
         response?.data?.pagination || {
           total: 0,
@@ -162,7 +176,22 @@ const Expenses = () => {
     try {
       setSummaryLoading(true);
 
-      const response = await getExpenseSummary();
+      if (!currentFestival?._id) {
+        setSummary({
+          totalExpense: 0,
+          totalExpenses: 0,
+          cashExpense: 0,
+          upiExpense: 0,
+          bankExpense: 0,
+          chequeExpense: 0,
+        });
+
+        return;
+      }
+
+      const response = await getExpenseSummary({
+        festivalId: currentFestival._id,
+      });
 
       setSummary(
         response?.data || {
@@ -174,8 +203,6 @@ const Expenses = () => {
           chequeExpense: 0,
         },
       );
-
-      console.log(response);
     } catch (error) {
       console.error("Failed to fetch expense summary:", error);
 
@@ -188,21 +215,36 @@ const Expenses = () => {
   };
 
   useEffect(() => {
+    if (!currentFestival?._id || festivalLoading) return;
+
     fetchExpenses();
-  }, [page, category, paymentMode, status, startDate, endDate]);
+  }, [
+    currentFestival?._id,
+    festivalLoading,
+    page,
+    category,
+    paymentMode,
+    status,
+    startDate,
+    endDate,
+  ]);
 
   useEffect(() => {
+    if (!currentFestival?._id || festivalLoading) return;
+
     fetchSummary();
-  }, []);
+  }, [currentFestival?._id, festivalLoading]);
 
   useEffect(() => {
+    if (!currentFestival?._id || festivalLoading) return;
+
     const timer = setTimeout(() => {
       setPage(1);
       fetchExpenses();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, currentFestival?._id, festivalLoading]);
 
   const handleResetFilters = () => {
     setSearch("");

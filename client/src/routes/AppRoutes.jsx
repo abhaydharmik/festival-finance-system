@@ -38,6 +38,7 @@ import FestivalSettings from "../pages/settings/FestivalSettings";
 import { FestivalProvider } from "../context/FestivalContext";
 import ChangePassword from "../pages/settings/ChangePassword";
 import EditIncome from "../pages/income/EditIncome";
+import EditExpense from "../pages/expenses/EditExpense";
 
 const AppRoutes = () => {
   return (
@@ -70,6 +71,7 @@ const AppRoutes = () => {
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/expenses/add" element={<AddExpense />} />
             <Route path="/expenses/:id" element={<ExpenseDetails />} />
+            <Route path="/expenses/:id/edit" element={<EditExpense />} />
 
             {/* Cash Distribution Routes */}
             <Route path="/cash" element={<CashDistribution />} />
