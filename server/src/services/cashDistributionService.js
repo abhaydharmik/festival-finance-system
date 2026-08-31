@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { FESTIVAL_STATUS } = require("../constants/festivalConstants");
 const User = require("../models/User");
 const Festival = require("../models/Festival");
@@ -100,7 +101,15 @@ const getAllCashDistributions = async (query = {}) => {
     isCancelled: false,
   };
 
-  if (festivalId) filter.festivalId = festivalId;
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
+  }
+
+  filter.festivalId = festivalId;
   if (volunteerId) filter.volunteerId = volunteerId;
   if (status) filter.status = status;
   if (purpose) filter.purpose = purpose;
@@ -266,11 +275,19 @@ const cancelCashDistribution = async (distributionId, cancelReason, userId) => {
 };
 
 // Get Cash Distribution Summary
+const getCashDistributionSummary = async (festivalId) => {
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
+  }
 
-const getCashDistributionSummary = async () => {
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
+  }
+
   const summary = await CashDistribution.aggregate([
     {
       $match: {
+        festivalId: new mongoose.Types.ObjectId(festivalId),
         isCancelled: false,
       },
     },

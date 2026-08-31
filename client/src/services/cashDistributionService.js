@@ -49,8 +49,10 @@ export const settleCashDistribution = async (id, amountReturned) => {
 };
 
 // Get cash distribution summary
-export const getCashDistributionSummary = async () => {
-  const response = await api.get("/cash-distributions/summary");
+export const getCashDistributionSummary = async (params = {}) => {
+  const response = await api.get("/cash-distributions/summary", {
+    params,
+  });
 
   return response.data;
 };

@@ -18,6 +18,7 @@ import {
   getCashDistributionSummary,
 } from "../../services/cashDistributionService";
 import { useAuth } from "../../context/AuthContext";
+import { useFestival } from "../../context/FestivalContext";
 
 const formatCurrency = (amount = 0) => {
   return new Intl.NumberFormat("en-IN", {
@@ -55,6 +56,7 @@ const getStatusClass = (status) => {
 
 const CashDistribution = () => {
   const { user } = useAuth();
+  const { currentFestival, loading: festivalLoading } = useFestival();
 
   const [distributions, setDistributions] = useState([]);
 
@@ -85,15 +87,22 @@ const CashDistribution = () => {
   // ================================
 
   const fetchDistributions = async (page = 1) => {
+    if (!currentFestival?._id) {
+      return;
+    }
+
     try {
       setLoading(true);
 
       const response = await getCashDistributions({
         page,
         limit: pagination.limit,
+        festivalId: currentFestival._id,
+
         ...(search.trim() && {
           search: search.trim(),
         }),
+
         ...(status && {
           status,
         }),
@@ -101,19 +110,15 @@ const CashDistribution = () => {
 
       console.log("CASH DISTRIBUTION RESPONSE:", response);
 
-      /*
-       * Backend ApiResponse structure:
-       * response.data.data
-       */
-      const data = response.data?.data;
+      const data = response?.data;
 
-      setDistributions(response.data?.distributions || []);
+      setDistributions(data?.distributions || []);
 
       setPagination(
-        response.data?.pagination || {
+        data?.pagination || {
           total: 0,
           page: 1,
-          limit: 10,
+          limit: pagination.limit,
           totalPages: 1,
         },
       );
@@ -133,16 +138,20 @@ const CashDistribution = () => {
   // ================================
 
   const fetchSummary = async () => {
+    if (!currentFestival?._id) {
+      return;
+    }
+
     try {
       setSummaryLoading(true);
 
-      const response = await getCashDistributionSummary();
+      const response = await getCashDistributionSummary({
+        festivalId: currentFestival._id,
+      });
 
-      /*
-       * Backend ApiResponse structure:
-       * response.data.data
-       */
-      const data = response.data;
+      console.log("CASH DISTRIBUTION SUMMARY:", response);
+
+      const data = response?.data;
 
       setSummary({
         totalDistributed: data?.totalDistributed || 0,
@@ -169,9 +178,18 @@ const CashDistribution = () => {
   // ================================
 
   useEffect(() => {
+    if (!currentFestival?._id) {
+      return;
+    }
+
+    setPagination((prev) => ({
+      ...prev,
+      page: 1,
+    }));
+
     fetchDistributions(1);
     fetchSummary();
-  }, [status]);
+  }, [currentFestival?._id, status]);
 
   // ================================
   // SEARCH

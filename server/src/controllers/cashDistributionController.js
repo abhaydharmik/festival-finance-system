@@ -93,19 +93,19 @@ const cancelCashDistribution = asyncHandler(async (req, res) => {
 });
 
 // Summary
-
 const getCashDistributionSummary = asyncHandler(async (req, res) => {
-  const summary = await cashDistributionService.getCashDistributionSummary();
+  const { festivalId } = req.query;
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        summary,
-        "Cash distribution summary fetched successfully",
-      ),
-    );
+  const summary =
+    await cashDistributionService.getCashDistributionSummary(festivalId);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      summary,
+      "Cash distribution summary fetched successfully",
+    ),
+  );
 });
 
 // Settle Cash Distribution
