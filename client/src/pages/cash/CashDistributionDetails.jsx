@@ -34,7 +34,9 @@ const formatCurrency = (amount = 0) => {
 };
 
 const formatDate = (date) => {
-  if (!date) return "-";
+  if (!date) {
+    return "-";
+  }
 
   const parsedDate = new Date(date);
 
@@ -50,7 +52,9 @@ const formatDate = (date) => {
 };
 
 const formatDateTime = (date) => {
-  if (!date) return "-";
+  if (!date) {
+    return "-";
+  }
 
   const parsedDate = new Date(date);
 
@@ -68,7 +72,9 @@ const formatDateTime = (date) => {
 };
 
 const capitalize = (value) => {
-  if (!value) return "-";
+  if (!value) {
+    return "-";
+  }
 
   return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 };
@@ -82,40 +88,35 @@ const extractDistribution = (response) => {
     return null;
   }
 
-  // Example:
-  // response.data = {
+  // {
   //   statusCode: 200,
   //   data: {
-  //      distribution: {...}
-  //   },
-  //   message: "..."
+  //     distribution: {...}
+  //   }
   // }
 
   if (response.data?.distribution) {
     return response.data.distribution;
   }
 
-  // Example:
-  // response.data = {
-  //    _id: "...",
-  //    amountGiven: ...
+  // {
+  //   statusCode: 200,
+  //   data: {...distribution}
   // }
 
   if (response.data?._id) {
     return response.data;
   }
 
-  // Example:
-  // response = {
-  //    distribution: {...}
+  // {
+  //   distribution: {...}
   // }
 
   if (response.distribution) {
     return response.distribution;
   }
 
-  // Example:
-  // response = distribution object
+  // Direct distribution object
 
   if (response._id) {
     return response;
@@ -131,6 +132,7 @@ const extractDistribution = (response) => {
 const CashDistributionDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const { user } = useAuth();
 
   const [distribution, setDistribution] = useState(null);
@@ -140,7 +142,7 @@ const CashDistributionDetails = () => {
   const [settling, setSettling] = useState(false);
 
   // ==========================================================
-  // FETCH CASH DISTRIBUTION
+  // FETCH
   // ==========================================================
 
   useEffect(() => {
@@ -171,8 +173,8 @@ const CashDistributionDetails = () => {
         console.error("Failed to fetch cash distribution:", error);
 
         toast.error(
-          error.response?.data?.message ||
-            error.message ||
+          error?.response?.data?.message ||
+            error?.message ||
             "Failed to load cash distribution",
         );
 
@@ -186,11 +188,11 @@ const CashDistributionDetails = () => {
   }, [id, navigate]);
 
   // ==========================================================
-  // CANCEL CASH DISTRIBUTION
+  // CANCEL
   // ==========================================================
 
   const handleCancel = async () => {
-    if (!distribution || cancelling) {
+    if (!distribution || cancelling || settling) {
       return;
     }
 
@@ -221,8 +223,6 @@ const CashDistributionDetails = () => {
       if (updatedDistribution) {
         setDistribution(updatedDistribution);
       } else {
-        // If backend doesn't return the complete distribution,
-        // update the important fields locally.
         setDistribution((previous) => ({
           ...previous,
           status: "cancelled",
@@ -237,7 +237,7 @@ const CashDistributionDetails = () => {
       console.error("Cancel distribution error:", error);
 
       toast.error(
-        error.response?.data?.message || "Failed to cancel cash distribution",
+        error?.response?.data?.message || "Failed to cancel cash distribution",
       );
     } finally {
       setCancelling(false);
@@ -245,11 +245,11 @@ const CashDistributionDetails = () => {
   };
 
   // ==========================================================
-  // SETTLE CASH DISTRIBUTION
+  // SETTLE
   // ==========================================================
 
   const handleSettle = async () => {
-    if (!distribution || settling) {
+    if (!distribution || settling || cancelling) {
       return;
     }
 
@@ -309,7 +309,7 @@ const CashDistributionDetails = () => {
       console.error("Settlement error:", error);
 
       toast.error(
-        error.response?.data?.message || "Failed to settle cash distribution",
+        error?.response?.data?.message || "Failed to settle cash distribution",
       );
     } finally {
       setSettling(false);
@@ -411,9 +411,7 @@ const CashDistributionDetails = () => {
           </div>
         </div>
 
-        {/* ==================================================
-            ADMIN ACTIONS
-        ================================================== */}
+        {/* ADMIN ACTIONS */}
 
         {isAdmin && !isCancelled && (
           <div className="flex flex-wrap gap-2">
@@ -501,7 +499,7 @@ const CashDistributionDetails = () => {
       ====================================================== */}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {/* AMOUNT GIVEN */}
+        {/* GIVEN */}
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
@@ -521,7 +519,7 @@ const CashDistributionDetails = () => {
           </div>
         </div>
 
-        {/* AMOUNT RETURNED */}
+        {/* RETURNED */}
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-medium text-gray-500">Amount Returned</p>
@@ -693,7 +691,7 @@ const CashDistributionDetails = () => {
           </div>
         </div>
 
-        {/* DISTRIBUTION AUTHORITY */}
+        {/* AUTHORITY */}
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-2">
