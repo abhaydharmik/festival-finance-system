@@ -4,8 +4,12 @@ import api from "./api";
 // GET TODAY'S DAILY TALLY
 // =====================================================
 
-export const getTodayDailyTally = async () => {
-  const response = await api.get("/daily-tally/today");
+export const getTodayDailyTally = async (festivalId) => {
+  const response = await api.get("/daily-tally/today", {
+    params: {
+      festivalId,
+    },
+  });
 
   return response.data;
 };
@@ -26,8 +30,12 @@ export const getDailyTallyHistory = async (params = {}) => {
 // GET DAILY TALLY BY ID
 // =====================================================
 
-export const getDailyTallyById = async (id) => {
-  const response = await api.get(`/daily-tally/${id}`);
+export const getDailyTallyById = async (id, festivalId) => {
+  const response = await api.get(`/daily-tally/${id}`, {
+    params: {
+      festivalId,
+    },
+  });
 
   return response.data;
 };
@@ -46,8 +54,12 @@ export const closeDailyTally = async (data = {}) => {
 // REOPEN DAILY TALLY
 // =====================================================
 
-export const reopenDailyTally = async (id, data = {}) => {
-  const response = await api.patch(`/daily-tally/${id}/reopen`, data);
+export const reopenDailyTally = async (id, data = {}, festivalId) => {
+  const response = await api.patch(`/daily-tally/${id}/reopen`, data, {
+    params: {
+      festivalId,
+    },
+  });
 
   return response.data;
 };

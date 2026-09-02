@@ -1,9 +1,12 @@
 const asyncHandler = require("../utils/asyncHandler");
+
 const { validateDailyTally } = require("../validators/dailyTallyValidator");
+
 const dailyTallyService = require("../services/dailyTallyService");
+
 const ApiResponse = require("../utils/ApiResponse");
 
-// Close Daily Tally
+// CLOSE DAILY TALLY
 const closeDailyTally = asyncHandler(async (req, res) => {
   validateDailyTally(req.body);
 
@@ -14,9 +17,11 @@ const closeDailyTally = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, tally, "Daily tally closed successfully"));
 });
 
-// Get Today Daily Tally
+// GET TODAY DAILY TALLY
 const getTodayDailyTally = asyncHandler(async (req, res) => {
-  const tally = await dailyTallyService.getTodayDailyTally();
+  const { festivalId } = req.query;
+
+  const tally = await dailyTallyService.getTodayDailyTally(festivalId);
 
   return res
     .status(200)
@@ -25,23 +30,31 @@ const getTodayDailyTally = asyncHandler(async (req, res) => {
     );
 });
 
-// Get Today Daily Tally By ID
+// GET DAILY TALLY BY ID
 const getDailyTallyById = asyncHandler(async (req, res) => {
-  const tally = await dailyTallyService.getDailyTallyById(req.params.id);
+  const { festivalId } = req.query;
+
+  const tally = await dailyTallyService.getDailyTallyById(
+    req.params.id,
+    festivalId,
+  );
 
   return res
     .status(200)
     .json(new ApiResponse(200, tally, "Daily tally fetched successfully"));
 });
 
-// Reopen Daily Tally
+// REOPEN DAILY TALLY
 const reopenDailyTally = asyncHandler(async (req, res) => {
   const { reopenReason } = req.body;
+
+  const { festivalId } = req.query;
 
   const tally = await dailyTallyService.reopenDailyTally(
     req.params.id,
     reopenReason,
     req.user._id,
+    festivalId,
   );
 
   return res
@@ -49,7 +62,7 @@ const reopenDailyTally = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, tally, "Daily tally reopened successfully"));
 });
 
-// Get Daily Tally History
+// GET DAILY TALLY HISTORY
 const getDailyTallyHistory = asyncHandler(async (req, res) => {
   const history = await dailyTallyService.getDailyTallyHistory(req.query);
 

@@ -1,5 +1,4 @@
 const { DAILY_TALLY_STATUS } = require("../constants/dailyTallyConstants");
-
 const { FESTIVAL_STATUS } = require("../constants/festivalConstants");
 
 const DailyTally = require("../models/DailyTally");
@@ -9,9 +8,25 @@ const ApiError = require("../utils/ApiError");
 
 const financeService = require("./financeService");
 
-// =====================================================
+// GET FESTIVAL BY ID
+
+const getFestivalById = async (festivalId) => {
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
+  }
+
+  const festival = await Festival.findOne({
+    _id: festivalId,
+  });
+
+  if (!festival) {
+    throw new ApiError(404, "Festival not found");
+  }
+
+  return festival;
+};
+
 // GET ACTIVE FESTIVAL
-// =====================================================
 
 const getActiveFestival = async () => {
   const festival = await Festival.findOne({
@@ -26,9 +41,7 @@ const getActiveFestival = async () => {
   return festival;
 };
 
-// =====================================================
 // GET TODAY DATE
-// =====================================================
 
 const getTodayDate = () => {
   const today = new Date();
@@ -38,44 +51,35 @@ const getTodayDate = () => {
   return today;
 };
 
-// =====================================================
 // CLOSE DAILY TALLY
-// =====================================================
 
 const closeDailyTally = async (data = {}, userId) => {
-  // ---------------------------------------------------
-  // 1. ACTIVE FESTIVAL
-  // ---------------------------------------------------
+  const { festivalId } = data;
+  // VALIDATE FESTIVAL
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
+  }
 
-  const festival = await getActiveFestival();
-
-  // ---------------------------------------------------
-  // 2. TODAY
-  // ---------------------------------------------------
-
+  const festival = await getFestivalById(festivalId);
+  // FESTIVAL MUST BE ACTIVE
+  if (festival.status !== FESTIVAL_STATUS.ACTIVE || !festival.isActive) {
+    throw new ApiError(
+      400,
+      "Daily tally can only be closed for an active festival",
+    );
+  }
+  // TODAY
   const tallyDate = getTodayDate();
-
-  // ---------------------------------------------------
-  // 3. FIND TODAY'S TALLY
-  // ---------------------------------------------------
-
+  // FIND TODAY'S TALLY
   const existingTally = await DailyTally.findOne({
     festivalId: festival._id,
     tallyDate,
   });
-
-  // ---------------------------------------------------
-  // 4. ALREADY CLOSED
-  // ---------------------------------------------------
-
+  // ALREADY CLOSED
   if (existingTally && existingTally.status === DAILY_TALLY_STATUS.CLOSED) {
     throw new ApiError(400, "Today's daily tally is already closed");
   }
-
-  // ---------------------------------------------------
-  // 5. FIND PREVIOUS TALLY
-  // ---------------------------------------------------
-
+  // FIND PREVIOUS TALLY
   const previousTally = await DailyTally.findOne({
     festivalId: festival._id,
 
@@ -85,23 +89,21 @@ const closeDailyTally = async (data = {}, userId) => {
   }).sort({
     tallyDate: -1,
   });
-
-  // ---------------------------------------------------
-  // 6. OPENING CASH
-  // ---------------------------------------------------
-
+  // OPENING CASH
   const openingCash = previousTally?.cashOnHand || 0;
+  // GET TODAY'S FINANCIAL SUMMARY
+  /*
+    IMPORTANT:
 
-  // ---------------------------------------------------
-  // 7. GET TODAY'S FINANCIAL SUMMARY
-  // ---------------------------------------------------
+    financeService receives festivalId.
+
+    Therefore all income, expense,
+    cash distribution and cash return
+    calculations must belong to this festival.
+  */
 
   const summary = await financeService.getClosingSummary(festival._id);
-
-  // ---------------------------------------------------
-  // 8. CHECK ACTIVITY
-  // ---------------------------------------------------
-
+  // 9. CHECK ACTIVITY
   const hasActivity =
     summary.cashIncome > 0 ||
     summary.onlineIncome > 0 ||
@@ -113,11 +115,7 @@ const closeDailyTally = async (data = {}, userId) => {
   if (!hasActivity) {
     throw new ApiError(400, "No financial activity found for today.");
   }
-
-  // ---------------------------------------------------
-  // 9. CASH ON HAND
-  // ---------------------------------------------------
-
+  // CASH ON HAND
   /*
     Opening Cash
     + Cash Income
@@ -132,17 +130,9 @@ const closeDailyTally = async (data = {}, userId) => {
     summary.cashReturned -
     summary.cashExpense -
     summary.cashDistributed;
-
-  // ---------------------------------------------------
-  // 10. PREVIOUS OVERALL BALANCE
-  // ---------------------------------------------------
-
+  // PREVIOUS OVERALL BALANCE
   const previousBalance = previousTally?.overallBalance || 0;
-
-  // ---------------------------------------------------
-  // 11. OVERALL BALANCE
-  // ---------------------------------------------------
-
+  // OVERALL BALANCE
   /*
     Previous Overall Balance
     + Today's Total Income
@@ -151,11 +141,7 @@ const closeDailyTally = async (data = {}, userId) => {
 
   const overallBalance =
     previousBalance + summary.totalIncome - summary.totalExpense;
-
-  // ---------------------------------------------------
-  // 12. REOPENED TALLY
-  // ---------------------------------------------------
-
+  // REOPENED TALLY
   if (existingTally && existingTally.status === DAILY_TALLY_STATUS.REOPENED) {
     existingTally.openingCash = openingCash;
 
@@ -195,11 +181,7 @@ const closeDailyTally = async (data = {}, userId) => {
       .populate("closedBy", "name email role")
       .populate("reopenedBy", "name email role");
   }
-
-  // ---------------------------------------------------
-  // 13. CREATE NEW TALLY
-  // ---------------------------------------------------
-
+  //  CREATE NEW TALLY
   const dailyTally = await DailyTally.create({
     festivalId: festival._id,
 
@@ -235,26 +217,21 @@ const closeDailyTally = async (data = {}, userId) => {
 
     isLocked: true,
   });
-
-  // ---------------------------------------------------
-  // 14. RETURN
-  // ---------------------------------------------------
-
+  //  RETURN
   return DailyTally.findById(dailyTally._id)
     .populate("festivalId", "name festivalCode year")
     .populate("closedBy", "name email role")
     .populate("reopenedBy", "name email role");
 };
 
-// =====================================================
 // GET TODAY DAILY TALLY
-// =====================================================
 
-const getTodayDailyTally = async () => {
-  const festival = await getActiveFestival();
-
+const getTodayDailyTally = async (festivalId) => {
+  //  VALIDATE FESTIVAL
+  const festival = await getFestivalById(festivalId);
+  // TODAY
   const today = getTodayDate();
-
+  // FIND TALLY FOR THIS FESTIVAL ONLY
   const tally = await DailyTally.findOne({
     festivalId: festival._id,
     tallyDate: today,
@@ -270,46 +247,46 @@ const getTodayDailyTally = async () => {
   return tally;
 };
 
-// =====================================================
 // GET DAILY TALLY BY ID
-// =====================================================
 
-const getDailyTallyById = async (tallyId) => {
-  const tally = await DailyTally.findById(tallyId)
+const getDailyTallyById = async (tallyId, festivalId) => {
+  //  VALIDATE FESTIVAL
+  await getFestivalById(festivalId);
+  // FIND TALLY BY ID + FESTIVAL
+  const tally = await DailyTally.findOne({
+    _id: tallyId,
+    festivalId,
+  })
     .populate("festivalId", "name festivalCode year")
     .populate("closedBy", "name email role")
     .populate("reopenedBy", "name email role");
 
   if (!tally) {
-    throw new ApiError(404, "Daily tally not found");
+    throw new ApiError(404, "Daily tally not found for this festival");
   }
 
   return tally;
 };
 
-// =====================================================
 // REOPEN DAILY TALLY
-// =====================================================
 
-const reopenDailyTally = async (tallyId, reopenReason, userId) => {
-  const tally = await DailyTally.findById(tallyId);
+const reopenDailyTally = async (tallyId, reopenReason, userId, festivalId) => {
+  //  VALIDATE FESTIVAL
+  await getFestivalById(festivalId);
+  // FIND TALLY BY ID + FESTIVAL
+  const tally = await DailyTally.findOne({
+    _id: tallyId,
+    festivalId,
+  });
 
   if (!tally) {
-    throw new ApiError(404, "Daily tally not found");
+    throw new ApiError(404, "Daily tally not found for this festival");
   }
-
-  // ---------------------------------------------------
   // ONLY CLOSED CAN BE REOPENED
-  // ---------------------------------------------------
-
   if (tally.status !== DAILY_TALLY_STATUS.CLOSED) {
     throw new ApiError(400, "Only closed daily tally can be reopened");
   }
-
-  // ---------------------------------------------------
   // REASON
-  // ---------------------------------------------------
-
   if (typeof reopenReason !== "string" || !reopenReason.trim()) {
     throw new ApiError(400, "Reopen reason is required");
   }
@@ -317,13 +294,9 @@ const reopenDailyTally = async (tallyId, reopenReason, userId) => {
   if (reopenReason.trim().length > 500) {
     throw new ApiError(400, "Reopen reason cannot exceed 500 characters");
   }
-
-  // ---------------------------------------------------
-  // ONLY LATEST TALLY
-  // ---------------------------------------------------
-
+  // ONLY LATEST TALLY OF THIS FESTIVAL
   const latestTally = await DailyTally.findOne({
-    festivalId: tally.festivalId,
+    festivalId,
   }).sort({
     tallyDate: -1,
   });
@@ -331,11 +304,7 @@ const reopenDailyTally = async (tallyId, reopenReason, userId) => {
   if (!latestTally || !latestTally._id.equals(tally._id)) {
     throw new ApiError(400, "Only the latest daily tally can be reopened");
   }
-
-  // ---------------------------------------------------
   // REOPEN
-  // ---------------------------------------------------
-
   tally.status = DAILY_TALLY_STATUS.REOPENED;
 
   tally.isLocked = false;
@@ -347,20 +316,14 @@ const reopenDailyTally = async (tallyId, reopenReason, userId) => {
   tally.reopenReason = reopenReason.trim();
 
   await tally.save();
-
-  // ---------------------------------------------------
   // RETURN
-  // ---------------------------------------------------
-
   return DailyTally.findById(tally._id)
     .populate("festivalId", "name festivalCode year")
     .populate("closedBy", "name email role")
     .populate("reopenedBy", "name email role");
 };
 
-// =====================================================
 // GET DAILY TALLY HISTORY
-// =====================================================
 
 const getDailyTallyHistory = async (query = {}) => {
   const {
@@ -371,38 +334,21 @@ const getDailyTallyHistory = async (query = {}) => {
     endDate,
     status,
   } = query;
-
-  const filter = {};
-
-  // ---------------------------------------------------
-  // FESTIVAL
-  // ---------------------------------------------------
-
-  if (festivalId) {
-    filter.festivalId = festivalId;
-  } else {
-    const activeFestival = await Festival.findOne({
-      status: FESTIVAL_STATUS.ACTIVE,
-      isActive: true,
-    });
-
-    if (activeFestival) {
-      filter.festivalId = activeFestival._id;
-    }
+  //  FESTIVAL IS REQUIRED
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
   }
-
-  // ---------------------------------------------------
+  // VERIFY FESTIVAL EXISTS
+  await getFestivalById(festivalId);
+  // BASE FILTER
+  const filter = {
+    festivalId,
+  };
   // STATUS
-  // ---------------------------------------------------
-
   if (status) {
     filter.status = status;
   }
-
-  // ---------------------------------------------------
   // DATE
-  // ---------------------------------------------------
-
   if (startDate || endDate) {
     filter.tallyDate = {};
 
@@ -430,21 +376,13 @@ const getDailyTallyHistory = async (query = {}) => {
       filter.tallyDate.$lte = end;
     }
   }
-
-  // ---------------------------------------------------
   // PAGINATION
-  // ---------------------------------------------------
-
   const pageNumber = Math.max(1, Number(page) || 1);
 
   const limitNumber = Math.max(1, Number(limit) || 10);
 
   const skip = (pageNumber - 1) * limitNumber;
-
-  // ---------------------------------------------------
   // FETCH
-  // ---------------------------------------------------
-
   const [tallies, total] = await Promise.all([
     DailyTally.find(filter)
       .populate("festivalId", "name festivalCode year")
@@ -458,11 +396,7 @@ const getDailyTallyHistory = async (query = {}) => {
 
     DailyTally.countDocuments(filter),
   ]);
-
-  // ---------------------------------------------------
   // RETURN
-  // ---------------------------------------------------
-
   return {
     tallies,
 
@@ -475,9 +409,7 @@ const getDailyTallyHistory = async (query = {}) => {
   };
 };
 
-// =====================================================
 // EXPORTS
-// =====================================================
 
 module.exports = {
   closeDailyTally,

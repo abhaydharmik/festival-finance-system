@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useFestival } from "../../context/FestivalContext";
 import {
   getTodayDailyTally,
   getDailyTallyHistory,
@@ -21,6 +22,7 @@ import {
 const DailyTally = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentFestival, loading: festivalLoading } = useFestival();
 
   const [todayTally, setTodayTally] = useState(null);
   const [history, setHistory] = useState([]);
@@ -31,19 +33,26 @@ const DailyTally = () => {
   const [error, setError] = useState("");
 
   const isAdmin = user?.role === "admin";
+  const festivalId = currentFestival?._id;
 
   // ----------------------------------
   // Fetch today's tally
   // ----------------------------------
 
   const fetchTodayTally = async () => {
+    if (!festivalId) {
+      setTodayTally(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
 
-      const response = await getTodayDailyTally();
+      const response = await getTodayDailyTally(festivalId);
 
-      setTodayTally(response.data.data);
+      setTodayTally(response.data);
     } catch (error) {
       // 404 means today's tally has not been closed yet
       if (error.response?.status === 404) {
@@ -64,10 +73,17 @@ const DailyTally = () => {
   // ----------------------------------
 
   const fetchHistory = async () => {
+    if (!festivalId) {
+      setHistory([]);
+      setHistoryLoading(false);
+      return;
+    }
+
     try {
       setHistoryLoading(true);
 
       const response = await getDailyTallyHistory({
+        festivalId,
         page: 1,
         limit: 10,
       });
@@ -75,19 +91,22 @@ const DailyTally = () => {
       setHistory(response.data?.tallies || []);
     } catch (error) {
       console.error("Failed to fetch tally history:", error);
+      setHistory([]);
     } finally {
       setHistoryLoading(false);
     }
   };
 
   // ----------------------------------
-  // Initial load
+  // Fetch when festival changes
   // ----------------------------------
 
   useEffect(() => {
+    if (festivalLoading) return;
+
     fetchTodayTally();
     fetchHistory();
-  }, []);
+  }, [festivalId, festivalLoading]);
 
   // ----------------------------------
   // Format currency
@@ -121,6 +140,48 @@ const DailyTally = () => {
   };
 
   // ----------------------------------
+  // Festival loading
+  // ----------------------------------
+
+  if (festivalLoading) {
+    return (
+      <div className="flex min-h-100 items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // No festival selected
+  // ----------------------------------
+
+  if (!currentFestival) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Daily Tally</h1>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Track and close the daily financial balance.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-8 text-center">
+          <CalendarDays className="mx-auto mb-3 h-10 w-10 text-yellow-600" />
+
+          <h2 className="font-semibold text-yellow-900">
+            No festival selected
+          </h2>
+
+          <p className="mt-1 text-sm text-yellow-700">
+            Please select a festival to view daily tally records.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------
   // Loading
   // ----------------------------------
 
@@ -143,6 +204,20 @@ const DailyTally = () => {
           <p className="mt-1 text-sm text-gray-500">
             Track and close the daily financial balance.
           </p>
+
+          {/* Current Festival */}
+
+          <div className="mt-2 flex items-center gap-2 text-sm">
+            <span className="text-gray-500">Festival:</span>
+
+            <span className="font-medium text-gray-900">
+              {currentFestival.name}
+            </span>
+
+            {currentFestival.year && (
+              <span className="text-gray-500">({currentFestival.year})</span>
+            )}
+          </div>
         </div>
 
         <button
@@ -257,7 +332,8 @@ const DailyTally = () => {
           <h2 className="font-semibold text-gray-900">Tally History</h2>
 
           <p className="mt-1 text-sm text-gray-500">
-            Previous daily financial records.
+            Previous daily financial records for{" "}
+            <span className="font-medium">{currentFestival.name}</span>.
           </p>
         </div>
 
@@ -267,7 +343,7 @@ const DailyTally = () => {
           </div>
         ) : history.length === 0 ? (
           <div className="p-10 text-center text-sm text-gray-500">
-            No daily tally records found.
+            No daily tally records found for this festival.
           </div>
         ) : (
           <div className="overflow-x-auto">

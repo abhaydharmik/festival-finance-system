@@ -1,15 +1,8 @@
 import React, { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  CalendarDays,
-  CheckCircle2,
-  Lock,
-  RefreshCw,
-  User,
-  Wallet,
-} from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, RefreshCw } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useFestival } from "../../context/FestivalContext";
 import {
   getDailyTallyById,
   reopenDailyTally,
@@ -18,7 +11,9 @@ import {
 const DailyTallyDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const { user } = useAuth();
+  const { currentFestival, loading: festivalLoading } = useFestival();
 
   const [tally, setTally] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -27,29 +22,61 @@ const DailyTallyDetails = () => {
   const [reopenReason, setReopenReason] = useState("");
   const [reopening, setReopening] = useState(false);
 
+  const [error, setError] = useState("");
+
   const isAdmin = user?.role === "admin";
+  const festivalId = currentFestival?._id;
+
+  // ----------------------------------
+  // Fetch tally
+  // ----------------------------------
 
   const fetchTally = async () => {
+    if (!festivalId) {
+      setTally(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError("");
 
-      const response = await getDailyTallyById(id);
+      const response = await getDailyTallyById(id, festivalId);
 
       setTally(response.data);
     } catch (error) {
       console.error("Failed to fetch daily tally:", error);
+
+      setTally(null);
+
+      setError(error.response?.data?.message || "Failed to fetch daily tally");
     } finally {
       setLoading(false);
     }
   };
 
+  // ----------------------------------
+  // Fetch when festival or ID changes
+  // ----------------------------------
+
   useEffect(() => {
+    if (festivalLoading) return;
+
     fetchTally();
-  }, [id]);
+  }, [id, festivalId, festivalLoading]);
+
+  // ----------------------------------
+  // Format currency
+  // ----------------------------------
 
   const formatCurrency = (amount = 0) => {
     return `₹${Number(amount).toLocaleString("en-IN")}`;
   };
+
+  // ----------------------------------
+  // Format date
+  // ----------------------------------
 
   const formatDate = (date) => {
     if (!date) return "-";
@@ -60,6 +87,10 @@ const DailyTallyDetails = () => {
       year: "numeric",
     });
   };
+
+  // ----------------------------------
+  // Format date time
+  // ----------------------------------
 
   const formatDateTime = (date) => {
     if (!date) return "-";
@@ -72,25 +103,74 @@ const DailyTallyDetails = () => {
       minute: "2-digit",
     });
   };
+
+  // ----------------------------------
+  // Handle reopen
+  // ----------------------------------
+
   const handleReopen = async () => {
-    if (!reopenReason.trim()) return;
+    if (!reopenReason.trim() || !festivalId) return;
 
     try {
       setReopening(true);
+      setError("");
 
-      await reopenDailyTally(id, {
-        reopenReason: reopenReason.trim(),
-      });
+      await reopenDailyTally(
+        id,
+        {
+          reopenReason: reopenReason.trim(),
+        },
+        festivalId,
+      );
+
       setShowReopenModal(false);
       setReopenReason("");
 
       await fetchTally();
     } catch (error) {
       console.error("Failed to reopen tally:", error.response?.data || error);
+
+      setError(error.response?.data?.message || "Failed to reopen daily tally");
     } finally {
       setReopening(false);
     }
   };
+
+  // ----------------------------------
+  // Festival loading
+  // ----------------------------------
+
+  if (festivalLoading) {
+    return (
+      <div className="flex min-h-100 items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // No festival selected
+  // ----------------------------------
+
+  if (!currentFestival) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-gray-500">Please select a festival first.</p>
+
+        <button
+          onClick={() => navigate("/tally")}
+          className="mt-4 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white"
+        >
+          Back to Daily Tally
+        </button>
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // Loading
+  // ----------------------------------
+
   if (loading) {
     return (
       <div className="flex min-h-100 items-center justify-center">
@@ -99,10 +179,18 @@ const DailyTallyDetails = () => {
     );
   }
 
+  // ----------------------------------
+  // Error / not found
+  // ----------------------------------
+
   if (!tally) {
     return (
       <div className="p-6 text-center">
-        <p className="text-gray-500">Daily tally not found.</p>
+        {error ? (
+          <p className="text-red-500">{error}</p>
+        ) : (
+          <p className="text-gray-500">Daily tally not found.</p>
+        )}
 
         <button
           onClick={() => navigate("/tally")}
@@ -142,6 +230,14 @@ const DailyTallyDetails = () => {
 
         <StatusBadge status={tally.status} />
       </div>
+
+      {/* Error */}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       {/* Festival information */}
 
