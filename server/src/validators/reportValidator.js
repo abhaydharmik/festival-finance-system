@@ -19,6 +19,8 @@ const {
 
 const { DAILY_TALLY_STATUS } = require("../constants/dailyTallyConstants");
 
+// VALIDATE REPORT FILTERS
+
 const validateReportFilters = (data = {}) => {
   const {
     startDate,
@@ -30,37 +32,61 @@ const validateReportFilters = (data = {}) => {
     status,
   } = data;
 
-  // Validate start date
+  // ===================================================
+  // FESTIVAL ID
+  // ===================================================
+
+  // Every report must belong to a festival.
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
+  }
+
+  // ===================================================
+  // START DATE
+  // ===================================================
+
   if (startDate && Number.isNaN(new Date(startDate).getTime())) {
     throw new ApiError(400, "Invalid start date");
   }
 
-  // Validate end date
+  // ===================================================
+  // END DATE
+  // ===================================================
+
   if (endDate && Number.isNaN(new Date(endDate).getTime())) {
     throw new ApiError(400, "Invalid end date");
   }
 
-  // Validate date range
+  // ===================================================
+  // DATE RANGE
+  // ===================================================
+
   if (startDate && endDate) {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Compare dates using the actual date values.
     if (start > end) {
       throw new ApiError(400, "Start date cannot be greater than end date");
     }
   }
 
-  // Validate Festival ID
-  if (festivalId && !mongoose.Types.ObjectId.isValid(festivalId)) {
-    throw new ApiError(400, "Invalid festival ID");
-  }
+  // ===================================================
+  // VOLUNTEER ID
+  // ===================================================
 
-  // Validate Volunteer ID
   if (volunteerId && !mongoose.Types.ObjectId.isValid(volunteerId)) {
     throw new ApiError(400, "Invalid volunteer ID");
   }
 
-  // Validate Payment Mode
+  // ===================================================
+  // PAYMENT MODE
+  // ===================================================
+
   const validPaymentModes = [
     ...new Set([
       ...Object.values(INCOME_PAYMENT_MODE),
@@ -72,7 +98,10 @@ const validateReportFilters = (data = {}) => {
     throw new ApiError(400, "Invalid payment mode");
   }
 
-  // Validate Category
+  // ===================================================
+  // CATEGORY
+  // ===================================================
+
   const validCategories = [
     ...new Set([
       ...Object.values(INCOME_CATEGORY),
@@ -84,7 +113,10 @@ const validateReportFilters = (data = {}) => {
     throw new ApiError(400, "Invalid category");
   }
 
-  // Valid Statuses
+  // ===================================================
+  // STATUS
+  // ===================================================
+
   const validStatuses = [
     ...new Set([
       ...Object.values(EXPENSE_STATUS),
@@ -96,8 +128,9 @@ const validateReportFilters = (data = {}) => {
   if (status && !validStatuses.includes(status)) {
     throw new ApiError(400, "Invalid status");
   }
-
 };
+
+// EXPORTS
 
 module.exports = {
   validateReportFilters,

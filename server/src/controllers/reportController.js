@@ -1,9 +1,13 @@
 const asyncHandler = require("../utils/asyncHandler");
+
 const { validateReportFilters } = require("../validators/reportValidator");
+
 const reportService = require("../services/reportService");
+
 const ApiResponse = require("../utils/ApiResponse");
 
-// Income Report
+// INCOME REPORT
+
 const getIncomeReport = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
@@ -14,7 +18,8 @@ const getIncomeReport = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, report, "Income report generated successfully"));
 });
 
-// Expense Report
+// EXPENSE REPORT
+
 const getExpenseReport = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
@@ -27,7 +32,8 @@ const getExpenseReport = asyncHandler(async (req, res) => {
     );
 });
 
-// Distribution Report
+// CASH DISTRIBUTION REPORT
+
 const getDistributionReport = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
@@ -39,12 +45,13 @@ const getDistributionReport = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         report,
-        "Cash Distribution report generated successfully",
+        "Cash distribution report generated successfully",
       ),
     );
 });
 
-// Volunteer Report
+// VOLUNTEER REPORT
+
 const getVolunteerReport = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
@@ -57,7 +64,8 @@ const getVolunteerReport = asyncHandler(async (req, res) => {
     );
 });
 
-// Daily Tally Report
+// DAILY TALLY REPORT
+
 const getDailyTallyReport = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
@@ -70,7 +78,8 @@ const getDailyTallyReport = asyncHandler(async (req, res) => {
     );
 });
 
-// Festival Summary Report
+// FESTIVAL SUMMARY REPORT
+
 const getFestivalSummary = asyncHandler(async (req, res) => {
   validateReportFilters(req.query);
 
@@ -82,6 +91,8 @@ const getFestivalSummary = asyncHandler(async (req, res) => {
       new ApiResponse(200, report, "Festival summary generated successfully"),
     );
 });
+
+// EXPORTS
 
 module.exports = {
   getIncomeReport,

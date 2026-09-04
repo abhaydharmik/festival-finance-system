@@ -1,15 +1,65 @@
 const mongoose = require("mongoose");
+
 const { INCOME_PAYMENT_MODE } = require("../constants/incomeConstants");
-const Income = require("../models/Income");
-const Expense = require("../models/Expense");
-const CashDistribution = require("../models/CashDistribution");
-const DailyTally = require("../models/DailyTally");
-const ApiError = require("../utils/ApiError");
 const { EXPENSE_PAYMENT_MODE } = require("../constants/expenseConstants");
 const {
   DISTRIBUTION_STATUS,
 } = require("../constants/cashDistributionConstants");
 
+const Income = require("../models/Income");
+const Expense = require("../models/Expense");
+const CashDistribution = require("../models/CashDistribution");
+const DailyTally = require("../models/DailyTally");
+
+const ApiError = require("../utils/ApiError");
+
+// HELPERS
+
+/**
+ * Validate and convert festival ID to MongoDB ObjectId.
+ *
+ * Every report in this system is festival-scoped.
+ */
+const getFestivalObjectId = (festivalId) => {
+  if (!festivalId) {
+    throw new ApiError(400, "Festival ID is required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(festivalId)) {
+    throw new ApiError(400, "Invalid festival ID");
+  }
+
+  return new mongoose.Types.ObjectId(festivalId);
+};
+
+/**
+ * Validate and convert volunteer ID to MongoDB ObjectId.
+ */
+const getVolunteerObjectId = (volunteerId) => {
+  if (!volunteerId) {
+    return null;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(volunteerId)) {
+    throw new ApiError(400, "Invalid volunteer ID");
+  }
+
+  return new mongoose.Types.ObjectId(volunteerId);
+};
+
+/**
+ * Build date range filter.
+ *
+ * Example:
+ * startDate = 2026-09-01
+ * endDate   = 2026-09-04
+ *
+ * Result:
+ * {
+ *   $gte: 2026-09-01 00:00:00,
+ *   $lte: 2026-09-04 23:59:59
+ * }
+ */
 const buildDateFilter = (startDate, endDate) => {
   const dateFilter = {};
 
@@ -24,6 +74,7 @@ const buildDateFilter = (startDate, endDate) => {
     }
 
     start.setHours(0, 0, 0, 0);
+
     dateFilter.$gte = start;
   }
 
@@ -35,6 +86,7 @@ const buildDateFilter = (startDate, endDate) => {
     }
 
     end.setHours(23, 59, 59, 999);
+
     dateFilter.$lte = end;
   }
 
@@ -45,22 +97,17 @@ const buildDateFilter = (startDate, endDate) => {
   return dateFilter;
 };
 
-// Generte Income Report
+// INCOME REPORT
+
 const generateIncomeReport = async (filters = {}) => {
   const { festivalId, startDate, endDate, paymentMode, category } = filters;
 
+  const festivalObjectId = getFestivalObjectId(festivalId);
+
   const match = {
+    festivalId: festivalObjectId,
     isCancelled: false,
   };
-
-  // Festival filter
-  if (festivalId) {
-    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
-      throw new ApiError(400, "Invalid festival ID");
-    }
-
-    match.festivalId = new mongoose.Types.ObjectId(festivalId);
-  }
 
   // Payment mode filter
   if (paymentMode) {
@@ -76,7 +123,7 @@ const generateIncomeReport = async (filters = {}) => {
   const dateFilter = buildDateFilter(startDate, endDate);
 
   if (Object.keys(dateFilter).length > 0) {
-    match.createdAt = dateFilter;
+    match.collectionDate = dateFilter;
   }
 
   const [summary, records] = await Promise.all([
@@ -84,6 +131,7 @@ const generateIncomeReport = async (filters = {}) => {
       {
         $match: match,
       },
+
       {
         $group: {
           _id: null,
@@ -130,9 +178,11 @@ const generateIncomeReport = async (filters = {}) => {
       .populate("festivalId", "name festivalCode year")
       .populate("collectedBy", "name email")
       .select(
-        "receiptNumber donorName mobile amount paymentMode category referenceNumber collectedBy remarks createdAt",
+        "receiptNumber donorName mobile amount paymentMode category referenceNumber collectionDate collectedBy remarks createdAt",
       )
-      .sort({ createdAt: -1 }),
+      .sort({
+        collectionDate: -1,
+      }),
   ]);
 
   return {
@@ -147,23 +197,18 @@ const generateIncomeReport = async (filters = {}) => {
   };
 };
 
-// Generate Expense Report
+// EXPENSE REPORT
+
 const generateExpenseReport = async (filters = {}) => {
   const { festivalId, startDate, endDate, paymentMode, category, status } =
     filters;
 
+  const festivalObjectId = getFestivalObjectId(festivalId);
+
   const match = {
+    festivalId: festivalObjectId,
     isCancelled: false,
   };
-
-  // Festival filter
-  if (festivalId) {
-    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
-      throw new ApiError(400, "Invalid festival ID");
-    }
-
-    match.festivalId = new mongoose.Types.ObjectId(festivalId);
-  }
 
   // Payment mode filter
   if (paymentMode) {
@@ -287,7 +332,9 @@ const generateExpenseReport = async (filters = {}) => {
       .select(
         "voucherNumber category vendorName description amount paymentMode referenceNumber expenseDate paidBy billNumber remarks distributionId status",
       )
-      .sort({ expenseDate: -1 }),
+      .sort({
+        expenseDate: -1,
+      }),
   ]);
 
   return {
@@ -306,30 +353,23 @@ const generateExpenseReport = async (filters = {}) => {
   };
 };
 
-// Generate Cash Distribution Report
+// CASH DISTRIBUTION REPORT
+
 const generateDistributionReport = async (filters = {}) => {
   const { festivalId, startDate, endDate, volunteerId, status } = filters;
 
+  const festivalObjectId = getFestivalObjectId(festivalId);
+
   const match = {
+    festivalId: festivalObjectId,
     isCancelled: false,
   };
 
-  // Festival filter
-  if (festivalId) {
-    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
-      throw new ApiError(400, "Invalid festival ID");
-    }
-
-    match.festivalId = new mongoose.Types.ObjectId(festivalId);
-  }
-
   // Volunteer filter
-  if (volunteerId) {
-    if (!mongoose.Types.ObjectId.isValid(volunteerId)) {
-      throw new ApiError(400, "Invalid volunteer ID");
-    }
+  const volunteerObjectId = getVolunteerObjectId(volunteerId);
 
-    match.volunteerId = new mongoose.Types.ObjectId(volunteerId);
+  if (volunteerObjectId) {
+    match.volunteerId = volunteerObjectId;
   }
 
   // Status filter
@@ -401,7 +441,9 @@ const generateDistributionReport = async (filters = {}) => {
       .select(
         "distributionNumber volunteerId amountGiven amountReturned returnedDate purpose distributionDate givenBy settledBy remarks status",
       )
-      .sort({ distributionDate: -1 }),
+      .sort({
+        distributionDate: -1,
+      }),
   ]);
 
   const result = summary[0] || {
@@ -423,45 +465,39 @@ const generateDistributionReport = async (filters = {}) => {
   };
 };
 
-// Generate Volunteer Financial Report
+// VOLUNTEER FINANCIAL REPORT
+
 const generateVolunteerReport = async (filters = {}) => {
   const { festivalId, startDate, endDate, volunteerId } = filters;
 
+  const festivalObjectId = getFestivalObjectId(festivalId);
+
+  const volunteerObjectId = getVolunteerObjectId(volunteerId);
+
+  // DISTRIBUTION MATCH
+
   const distributionMatch = {
+    festivalId: festivalObjectId,
     isCancelled: false,
   };
 
-  // Festival filter
-  if (festivalId) {
-    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
-      throw new ApiError(400, "Invalid festival ID");
-    }
-
-    distributionMatch.festivalId = new mongoose.Types.ObjectId(festivalId);
+  if (volunteerObjectId) {
+    distributionMatch.volunteerId = volunteerObjectId;
   }
 
-  // Volunteer filter
-  if (volunteerId) {
-    if (!mongoose.Types.ObjectId.isValid(volunteerId)) {
-      throw new ApiError(400, "Invalid volunteer ID");
-    }
-
-    distributionMatch.volunteerId = new mongoose.Types.ObjectId(volunteerId);
-  }
-
-  // Date filter
   const dateFilter = buildDateFilter(startDate, endDate);
 
   if (Object.keys(dateFilter).length > 0) {
     distributionMatch.distributionDate = dateFilter;
   }
 
+  // GET VOLUNTEER DISTRIBUTIONS
+
   const volunteers = await CashDistribution.aggregate([
     {
       $match: distributionMatch,
     },
 
-    // Group distributions by volunteer
     {
       $group: {
         _id: "$volunteerId",
@@ -480,16 +516,14 @@ const generateVolunteerReport = async (filters = {}) => {
       },
     },
 
-    // Calculate outstanding advance
     {
       $addFields: {
-        outstandingAmount: {
+        cashWithVolunteer: {
           $subtract: ["$totalGiven", "$totalReturned"],
         },
       },
     },
 
-    // Get volunteer information
     {
       $lookup: {
         from: "users",
@@ -522,29 +556,29 @@ const generateVolunteerReport = async (filters = {}) => {
 
         totalReturned: 1,
 
-        outstandingAmount: 1,
+        cashWithVolunteer: 1,
       },
     },
 
     {
       $sort: {
-        outstandingAmount: -1,
+        cashWithVolunteer: -1,
       },
     },
   ]);
 
-  // Get volunteer expenses
+  // GET VOLUNTEER EXPENSES
+
   const expenseMatch = {
+    festivalId: festivalObjectId,
+
     isCancelled: false,
 
     distributionId: {
       $exists: true,
+      $ne: null,
     },
   };
-
-  if (festivalId) {
-    expenseMatch.festivalId = new mongoose.Types.ObjectId(festivalId);
-  }
 
   if (Object.keys(dateFilter).length > 0) {
     expenseMatch.expenseDate = dateFilter;
@@ -555,6 +589,7 @@ const generateVolunteerReport = async (filters = {}) => {
       $match: expenseMatch,
     },
 
+    // Connect expense to cash distribution
     {
       $lookup: {
         from: "cashdistributions",
@@ -568,11 +603,26 @@ const generateVolunteerReport = async (filters = {}) => {
       $unwind: "$distribution",
     },
 
+    // Make sure distribution belongs to
+    // the same festival and is not cancelled.
     {
       $match: {
+        "distribution.festivalId": festivalObjectId,
+
         "distribution.isCancelled": false,
       },
     },
+
+    // Optional volunteer filter
+    ...(volunteerObjectId
+      ? [
+          {
+            $match: {
+              "distribution.volunteerId": volunteerObjectId,
+            },
+          },
+        ]
+      : []),
 
     {
       $group: {
@@ -585,23 +635,30 @@ const generateVolunteerReport = async (filters = {}) => {
     },
   ]);
 
-  // Map expenses by volunteer
+  // MAP EXPENSES BY VOLUNTEER
+
   const expenseMap = new Map(
     volunteerExpenses.map((item) => [item._id.toString(), item.totalExpenses]),
   );
 
-  // Merge distribution + expense information
+  // MERGE DISTRIBUTION + EXPENSE DATA
+
   const report = volunteers.map((volunteer) => {
     const totalExpenses = expenseMap.get(volunteer.volunteerId.toString()) || 0;
+
+    const remainingCash =
+      volunteer.totalGiven - volunteer.totalReturned - totalExpenses;
 
     return {
       ...volunteer,
 
       totalExpenses,
 
-      remainingCash: volunteer.outstandingAmount - totalExpenses,
+      remainingCash,
     };
   });
+
+  // SUMMARY
 
   return {
     summary: {
@@ -623,20 +680,16 @@ const generateVolunteerReport = async (filters = {}) => {
   };
 };
 
-// Generate Daily Tally Report
+// DAILY TALLY REPORT
+
 const generateDailyTallyReport = async (filters = {}) => {
   const { festivalId, startDate, endDate, status } = filters;
 
-  const match = {};
+  const festivalObjectId = getFestivalObjectId(festivalId);
 
-  // Festival filter
-  if (festivalId) {
-    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
-      throw new ApiError(400, "Invalid festival ID");
-    }
-
-    match.festivalId = new mongoose.Types.ObjectId(festivalId);
-  }
+  const match = {
+    festivalId: festivalObjectId,
+  };
 
   // Status filter
   if (status) {
@@ -713,49 +766,54 @@ const generateDailyTallyReport = async (filters = {}) => {
   };
 };
 
-// Generate Festival Summary Report
+// FESTIVAL SUMMARY REPORT
+
 const generateFestivalSummary = async (filters = {}) => {
   const { festivalId, startDate, endDate } = filters;
 
+  const festivalObjectId = getFestivalObjectId(festivalId);
+
+  // MATCH CONDITIONS
+
   const incomeMatch = {
+    festivalId: festivalObjectId,
     isCancelled: false,
   };
 
   const expenseMatch = {
+    festivalId: festivalObjectId,
     isCancelled: false,
   };
 
   const distributionMatch = {
+    festivalId: festivalObjectId,
     isCancelled: false,
   };
 
-  // Festival filter
-  if (festivalId) {
-    if (!mongoose.Types.ObjectId.isValid(festivalId)) {
-      throw new ApiError(400, "Invalid festival ID");
-    }
+  // DATE FILTER
 
-    const objectFestivalId = new mongoose.Types.ObjectId(festivalId);
-
-    incomeMatch.festivalId = objectFestivalId;
-    expenseMatch.festivalId = objectFestivalId;
-    distributionMatch.festivalId = objectFestivalId;
-  }
-
-  // Date filters
   const dateFilter = buildDateFilter(startDate, endDate);
 
   if (Object.keys(dateFilter).length > 0) {
-    incomeMatch.createdAt = dateFilter;
+    incomeMatch.collectionDate = dateFilter;
+
     expenseMatch.expenseDate = dateFilter;
+
     distributionMatch.distributionDate = dateFilter;
   }
 
+  // RUN REPORTS
+
   const [income, expense, distribution] = await Promise.all([
+    // -------------------------------------------------
+    // INCOME
+    // -------------------------------------------------
+
     Income.aggregate([
       {
         $match: incomeMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -798,10 +856,15 @@ const generateFestivalSummary = async (filters = {}) => {
       },
     ]),
 
+    // -------------------------------------------------
+    // EXPENSE
+    // -------------------------------------------------
+
     Expense.aggregate([
       {
         $match: expenseMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -889,10 +952,15 @@ const generateFestivalSummary = async (filters = {}) => {
       },
     ]),
 
+    // -------------------------------------------------
+    // CASH DISTRIBUTION
+    // -------------------------------------------------
+
     CashDistribution.aggregate([
       {
         $match: distributionMatch,
       },
+
       {
         $group: {
           _id: null,
@@ -912,6 +980,8 @@ const generateFestivalSummary = async (filters = {}) => {
       },
     ]),
   ]);
+
+  // DEFAULT SUMMARIES
 
   const incomeSummary = income[0] || {
     totalRecords: 0,
@@ -937,12 +1007,18 @@ const generateFestivalSummary = async (filters = {}) => {
     totalAmountReturned: 0,
   };
 
+  // CALCULATE OVERALL BALANCE
+
   const overallBalance =
     incomeSummary.totalIncome - expenseSummary.totalExpense;
+
+  // CALCULATE CASH WITH VOLUNTEERS
 
   const cashWithVolunteers =
     distributionSummary.totalAmountGiven -
     distributionSummary.totalAmountReturned;
+
+  // FINAL RESPONSE
 
   return {
     income: incomeSummary,
@@ -951,12 +1027,15 @@ const generateFestivalSummary = async (filters = {}) => {
 
     distribution: {
       ...distributionSummary,
+
       cashWithVolunteers,
     },
 
     overallBalance,
   };
 };
+
+// EXPORTS
 
 module.exports = {
   generateIncomeReport,
