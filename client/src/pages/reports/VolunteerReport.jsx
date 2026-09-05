@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -10,61 +10,89 @@ import {
   ReceiptText,
   CircleDollarSign,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
+import { useFestival } from "../../context/FestivalContext";
 import { getVolunteerReport } from "../../services/reportService";
 
-const VolunteerReport = () => {
-  const [report, setReport] = useState(null);
+const INITIAL_FILTERS = {
+  startDate: "",
+  endDate: "",
+  volunteerId: "",
+};
 
+const VolunteerReport = () => {
+  const navigate = useNavigate();
+
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
+  const festivalId = currentFestival?._id;
+
+  const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [filters, setFilters] = useState({
-    startDate: "",
-    endDate: "",
-    volunteerId: "",
-  });
-
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [search, setSearch] = useState("");
 
   // ----------------------------------
   // Fetch report
   // ----------------------------------
 
-  const fetchReport = async (customFilters = filters) => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const params = {};
-
-      if (customFilters.startDate) {
-        params.startDate = customFilters.startDate;
+  const fetchReport = useCallback(
+    async (customFilters = filters) => {
+      if (!festivalId) {
+        setReport(null);
+        setLoading(false);
+        return;
       }
 
-      if (customFilters.endDate) {
-        params.endDate = customFilters.endDate;
+      try {
+        setLoading(true);
+        setError("");
+
+        const params = {
+          festivalId,
+        };
+
+        if (customFilters.startDate) {
+          params.startDate = customFilters.startDate;
+        }
+
+        if (customFilters.endDate) {
+          params.endDate = customFilters.endDate;
+        }
+
+        if (customFilters.volunteerId?.trim()) {
+          params.volunteerId = customFilters.volunteerId.trim();
+        }
+
+        const response = await getVolunteerReport(params);
+
+        setReport(response.data);
+      } catch (error) {
+        setError(
+          error.response?.data?.message || "Failed to fetch volunteer report",
+        );
+      } finally {
+        setLoading(false);
       }
-
-      if (customFilters.volunteerId?.trim()) {
-        params.volunteerId = customFilters.volunteerId.trim();
-      }
-
-      const response = await getVolunteerReport(params);
-
-      setReport(response.data);
-    } catch (error) {
-      setError(
-        error.response?.data?.message || "Failed to fetch volunteer report",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [festivalId, filters],
+  );
 
   useEffect(() => {
-    fetchReport();
-  }, []);
+    if (festivalLoading) return;
+
+    if (!festivalId) {
+      setReport(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
+    fetchReport(INITIAL_FILTERS);
+  }, [festivalId, festivalLoading, fetchReport]);
 
   // ----------------------------------
   // Filter change
@@ -94,16 +122,10 @@ const VolunteerReport = () => {
   // ----------------------------------
 
   const handleResetFilters = () => {
-    const resetFilters = {
-      startDate: "",
-      endDate: "",
-      volunteerId: "",
-    };
-
-    setFilters(resetFilters);
+    setFilters(INITIAL_FILTERS);
     setSearch("");
 
-    fetchReport(resetFilters);
+    fetchReport(INITIAL_FILTERS);
   };
 
   // ----------------------------------
@@ -205,10 +227,39 @@ const VolunteerReport = () => {
   // Loading
   // ----------------------------------
 
-  if (loading) {
+  if (festivalLoading || loading) {
     return (
       <div className="flex min-h-100 items-center justify-center">
         <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // No festival
+  // ----------------------------------
+
+  if (!currentFestival) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <button
+          type="button"
+          onClick={() => navigate("/reports")}
+          className="inline-flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Reports
+        </button>
+
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-5">
+          <h2 className="font-semibold text-yellow-900">
+            No Festival Selected
+          </h2>
+
+          <p className="mt-1 text-sm text-yellow-700">
+            Please select a festival before viewing the volunteer report.
+          </p>
+        </div>
       </div>
     );
   }
@@ -227,21 +278,31 @@ const VolunteerReport = () => {
             <ArrowLeft className="h-4 w-4" />
             Back to Reports
           </button>
+
           <h1 className="text-2xl font-bold text-gray-900">Volunteer Report</h1>
 
           <p className="mt-1 text-sm text-gray-500">
             Track volunteer cash distributions, expenses, and remaining
             balances.
           </p>
+
+          <div className="mt-2 text-sm text-gray-500">
+            Festival:{" "}
+            <span className="font-medium text-gray-900">
+              {currentFestival.name}
+            </span>{" "}
+            ({currentFestival.year})
+          </div>
         </div>
 
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => fetchReport()}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            onClick={() => fetchReport(filters)}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
 
@@ -280,8 +341,6 @@ const VolunteerReport = () => {
           onSubmit={handleApplyFilters}
           className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
         >
-          {/* Start Date */}
-
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
               Start Date
@@ -295,8 +354,6 @@ const VolunteerReport = () => {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500"
             />
           </div>
-
-          {/* End Date */}
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -312,8 +369,6 @@ const VolunteerReport = () => {
             />
           </div>
 
-          {/* Volunteer ID */}
-
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
               Volunteer ID
@@ -328,8 +383,6 @@ const VolunteerReport = () => {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none placeholder:text-gray-400 focus:border-gray-500"
             />
           </div>
-
-          {/* Buttons */}
 
           <div className="flex items-end gap-2">
             <button
@@ -388,8 +441,6 @@ const VolunteerReport = () => {
       {/* Volunteer Records */}
 
       <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        {/* Table Header */}
-
         <div className="flex flex-col gap-4 border-b border-gray-200 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">
@@ -401,8 +452,6 @@ const VolunteerReport = () => {
               {filteredVolunteers.length !== 1 ? "s" : ""} found.
             </p>
           </div>
-
-          {/* Search */}
 
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -416,8 +465,6 @@ const VolunteerReport = () => {
             />
           </div>
         </div>
-
-        {/* Empty */}
 
         {filteredVolunteers.length === 0 ? (
           <div className="p-10 text-center">
@@ -475,8 +522,6 @@ const VolunteerReport = () => {
                       key={volunteer.volunteerId}
                       className="transition hover:bg-gray-50"
                     >
-                      {/* Volunteer */}
-
                       <td className="px-5 py-4">
                         <p className="text-sm font-semibold text-gray-900">
                           {volunteer.volunteerName || "Unknown"}
@@ -487,37 +532,25 @@ const VolunteerReport = () => {
                         </p>
                       </td>
 
-                      {/* Distributions */}
-
                       <td className="px-5 py-4 text-center text-sm font-medium text-gray-900">
                         {volunteer.totalDistributions || 0}
                       </td>
-
-                      {/* Given */}
 
                       <td className="px-5 py-4 text-right text-sm font-medium text-gray-900">
                         {formatCurrency(volunteer.totalGiven)}
                       </td>
 
-                      {/* Returned */}
-
                       <td className="px-5 py-4 text-right text-sm text-green-600">
                         {formatCurrency(volunteer.totalReturned)}
                       </td>
-
-                      {/* Outstanding */}
 
                       <td className="px-5 py-4 text-right text-sm font-medium text-orange-600">
                         {formatCurrency(volunteer.outstandingAmount)}
                       </td>
 
-                      {/* Expenses */}
-
                       <td className="px-5 py-4 text-right text-sm text-red-600">
                         {formatCurrency(volunteer.totalExpenses)}
                       </td>
-
-                      {/* Remaining Cash */}
 
                       <td
                         className={`px-5 py-4 text-right text-sm font-bold ${
@@ -541,10 +574,6 @@ const VolunteerReport = () => {
     </div>
   );
 };
-
-// ----------------------------------
-// Summary Card
-// ----------------------------------
 
 const SummaryCard = ({ icon: Icon, title, value }) => {
   return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -9,10 +9,16 @@ import {
   IndianRupee,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+import { useFestival } from "../../context/FestivalContext";
 import { getFestivalSummary } from "../../services/reportService";
 
 const FestivalSummaryReport = () => {
   const navigate = useNavigate();
+
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
+  const festivalId = currentFestival?._id;
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,12 +28,21 @@ const FestivalSummaryReport = () => {
   // Fetch Festival Summary
   // ----------------------------------
 
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
+    if (!festivalId) {
+      setReport(null);
+      setError("Please select a festival to view the festival summary.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
 
-      const response = await getFestivalSummary();
+      const response = await getFestivalSummary({
+        festivalId,
+      });
 
       setReport(response.data);
     } catch (error) {
@@ -39,15 +54,17 @@ const FestivalSummaryReport = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [festivalId]);
 
   // ----------------------------------
-  // Initial Load
+  // Load Report
   // ----------------------------------
 
   useEffect(() => {
+    if (festivalLoading) return;
+
     fetchReport();
-  }, []);
+  }, [festivalLoading, fetchReport]);
 
   // ----------------------------------
   // Currency
@@ -80,6 +97,11 @@ const FestivalSummaryReport = () => {
 
     const rows = [
       ["Festival Summary Report"],
+      [],
+
+      ["Festival", currentFestival?.name || ""],
+      ["Year", currentFestival?.year || ""],
+
       [],
 
       ["Overall Financial Summary"],
@@ -144,7 +166,64 @@ const FestivalSummaryReport = () => {
   };
 
   // ----------------------------------
-  // Loading
+  // Festival Loading
+  // ----------------------------------
+
+  if (festivalLoading) {
+    return (
+      <div className="flex min-h-100 items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // No Festival Selected
+  // ----------------------------------
+
+  if (!currentFestival) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate("/reports")}
+            className="mb-3 inline-flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Reports
+          </button>
+
+          <h1 className="text-2xl font-bold text-gray-900">Festival Summary</h1>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Overall financial summary of the festival.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-5">
+          <h2 className="font-semibold text-yellow-900">
+            No Festival Selected
+          </h2>
+
+          <p className="mt-1 text-sm text-yellow-700">
+            Please select a festival before viewing the festival summary.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => navigate("/reports")}
+            className="mt-4 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+          >
+            Back to Reports
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // Loading Report
   // ----------------------------------
 
   if (loading) {
@@ -185,6 +264,26 @@ const FestivalSummaryReport = () => {
           <p className="mt-1 text-sm text-gray-500">
             Overall financial summary of the festival.
           </p>
+
+          {/* Selected Festival */}
+
+          <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Festival
+              </p>
+
+              <p className="text-sm font-semibold text-gray-900">
+                {currentFestival.name}
+              </p>
+            </div>
+
+            <span className="text-sm text-gray-400">•</span>
+
+            <span className="text-sm text-gray-600">
+              {currentFestival.year}
+            </span>
+          </div>
         </div>
 
         {/* Header Actions */}

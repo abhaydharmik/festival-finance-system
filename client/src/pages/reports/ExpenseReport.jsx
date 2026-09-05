@@ -1,86 +1,101 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowLeft,
   CalendarDays,
+  Loader2,
   Receipt,
   RefreshCw,
   TrendingDown,
   Wallet,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+import { useFestival } from "../../context/FestivalContext";
 import { getExpenseReport } from "../../services/reportService";
+
+const INITIAL_FILTERS = {
+  startDate: "",
+  endDate: "",
+  paymentMode: "",
+  category: "",
+  status: "",
+};
 
 const ExpenseReport = () => {
   const navigate = useNavigate();
 
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
+  const festivalId = currentFestival?._id;
+
   const [report, setReport] = useState(null);
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
 
-  const [filters, setFilters] = useState({
-    startDate: "",
-    endDate: "",
-    paymentMode: "",
-    category: "",
-    status: "",
-  });
-
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ----------------------------------
-  // Fetch report
-  // ----------------------------------
+  // FETCH REPORT
 
-  const fetchReport = async (customFilters = filters) => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const params = {};
-
-      if (customFilters.startDate) {
-        params.startDate = customFilters.startDate;
+  const fetchReport = useCallback(
+    async (customFilters = filters) => {
+      if (!festivalId) {
+        setReport(null);
+        setError("");
+        return;
       }
 
-      if (customFilters.endDate) {
-        params.endDate = customFilters.endDate;
+      try {
+        setLoading(true);
+        setError("");
+
+        const params = {
+          festivalId,
+        };
+
+        if (customFilters.startDate) {
+          params.startDate = customFilters.startDate;
+        }
+
+        if (customFilters.endDate) {
+          params.endDate = customFilters.endDate;
+        }
+
+        if (customFilters.paymentMode) {
+          params.paymentMode = customFilters.paymentMode;
+        }
+
+        if (customFilters.category) {
+          params.category = customFilters.category;
+        }
+
+        if (customFilters.status) {
+          params.status = customFilters.status;
+        }
+
+        const response = await getExpenseReport(params);
+
+        setReport(response.data || null);
+      } catch (error) {
+        setError(
+          error.response?.data?.message || "Failed to generate expense report",
+        );
+      } finally {
+        setLoading(false);
       }
+    },
+    [festivalId, filters],
+  );
 
-      if (customFilters.paymentMode) {
-        params.paymentMode = customFilters.paymentMode;
-      }
-
-      if (customFilters.category) {
-        params.category = customFilters.category;
-      }
-
-      if (customFilters.status) {
-        params.status = customFilters.status;
-      }
-
-      const response = await getExpenseReport(params);
-
-      setReport(response.data || null);
-    } catch (error) {
-      setError(
-        error.response?.data?.message || "Failed to generate expense report",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ----------------------------------
-  // Initial fetch
-  // ----------------------------------
+  // FETCH WHEN FESTIVAL IS READY
 
   useEffect(() => {
-    fetchReport();
-  }, []);
+    if (!festivalLoading) {
+      fetchReport();
+    }
+  }, [festivalId, festivalLoading]);
 
-  // ----------------------------------
-  // Handle change
-  // ----------------------------------
+  // HANDLE FILTER CHANGE
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -91,9 +106,7 @@ const ExpenseReport = () => {
     }));
   };
 
-  // ----------------------------------
-  // Apply filters
-  // ----------------------------------
+  // APPLY FILTERS
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -101,57 +114,45 @@ const ExpenseReport = () => {
     fetchReport(filters);
   };
 
-  // ----------------------------------
-  // Clear filters
-  // ----------------------------------
+  // CLEAR FILTERS
 
   const handleClear = () => {
-    const clearedFilters = {
-      startDate: "",
-      endDate: "",
-      paymentMode: "",
-      category: "",
-      status: "",
-    };
+    setFilters(INITIAL_FILTERS);
 
-    setFilters(clearedFilters);
-
-    fetchReport(clearedFilters);
+    fetchReport(INITIAL_FILTERS);
   };
 
-  // ----------------------------------
-  // Refresh
-  // ----------------------------------
+  // REFRESH
 
   const handleRefresh = () => {
     fetchReport(filters);
   };
 
-  // ----------------------------------
-  // Currency
-  // ----------------------------------
+  // CURRENCY
 
   const formatCurrency = (amount = 0) => {
     return `₹${Number(amount).toLocaleString("en-IN")}`;
   };
 
-  // ----------------------------------
-  // Date
-  // ----------------------------------
+  // DATE
 
   const formatDate = (date) => {
     if (!date) return "-";
 
-    return new Date(date).toLocaleDateString("en-IN", {
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
   };
 
-  // ----------------------------------
-  // Export CSV
-  // ----------------------------------
+  // EXPORT CSV
 
   const exportCSV = () => {
     if (!records.length) return;
@@ -197,7 +198,7 @@ const ExpenseReport = () => {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = "expense-report.csv";
+    link.download = `expense-report-${currentFestival?.year || "report"}.csv`;
 
     document.body.appendChild(link);
     link.click();
@@ -207,9 +208,42 @@ const ExpenseReport = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ----------------------------------
-  // Initial loading
-  // ----------------------------------
+  // FESTIVAL LOADING
+
+  if (festivalLoading) {
+    return (
+      <div className="flex min-h-100 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // NO FESTIVAL
+
+  if (!currentFestival) {
+    return (
+      <div className="mx-auto max-w-2xl p-4 md:p-6">
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-5">
+          <h2 className="font-semibold text-yellow-900">
+            No Festival Selected
+          </h2>
+
+          <p className="mt-1 text-sm text-yellow-700">
+            Please select a festival before viewing the expense report.
+          </p>
+
+          <button
+            onClick={() => navigate("/reports")}
+            className="mt-4 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            Back to Reports
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // INITIAL LOADING
 
   if (loading && !report) {
     return (
@@ -224,7 +258,7 @@ const ExpenseReport = () => {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
+      {/* HEADER */}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -241,11 +275,17 @@ const ExpenseReport = () => {
           <p className="mt-1 text-sm text-gray-500">
             View and analyze all expense transactions.
           </p>
+
+          <div className="mt-2 text-sm font-medium text-gray-700">
+            Festival:{" "}
+            <span className="font-semibold text-gray-900">
+              {currentFestival.name}
+            </span>{" "}
+            ({currentFestival.year})
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          {/* Refresh */}
-
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={handleRefresh}
             disabled={loading}
@@ -254,8 +294,6 @@ const ExpenseReport = () => {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
-
-          {/* Export CSV */}
 
           <button
             onClick={exportCSV}
@@ -268,7 +306,7 @@ const ExpenseReport = () => {
         </div>
       </div>
 
-      {/* Error */}
+      {/* ERROR */}
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -276,7 +314,7 @@ const ExpenseReport = () => {
         </div>
       )}
 
-      {/* Filters */}
+      {/* FILTERS */}
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
@@ -335,9 +373,13 @@ const ExpenseReport = () => {
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-500"
             >
               <option value="">All Payment Modes</option>
+
               <option value="cash">Cash</option>
+
               <option value="upi">UPI</option>
+
               <option value="bank">Bank</option>
+
               <option value="cheque">Cheque</option>
             </select>
           </div>
@@ -356,10 +398,15 @@ const ExpenseReport = () => {
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-500"
             >
               <option value="">All Categories</option>
+
               <option value="food">Food</option>
+
               <option value="decoration">Decoration</option>
+
               <option value="transport">Transport</option>
+
               <option value="equipment">Equipment</option>
+
               <option value="other">Other</option>
             </select>
           </div>
@@ -378,27 +425,33 @@ const ExpenseReport = () => {
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-500"
             >
               <option value="">All Statuses</option>
-              <option value="approved">Approved</option>
+
               <option value="pending">Pending</option>
+
+              <option value="approved">Approved</option>
+
+              <option value="paid">Paid</option>
+
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
 
-          {/* Buttons */}
+          {/* Actions */}
 
           <div className="flex items-end gap-2">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
+              className="flex-1 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Apply
+              {loading ? "Loading..." : "Apply"}
             </button>
 
             <button
               type="button"
               onClick={handleClear}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              disabled={loading}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Clear
             </button>
@@ -406,7 +459,7 @@ const ExpenseReport = () => {
         </form>
       </section>
 
-      {/* Summary */}
+      {/* SUMMARY */}
 
       <section>
         <h2 className="mb-4 text-lg font-semibold text-gray-900">
@@ -440,7 +493,7 @@ const ExpenseReport = () => {
         </div>
       </section>
 
-      {/* Payment Breakdown */}
+      {/* PAYMENT BREAKDOWN */}
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 font-semibold text-gray-900">Payment Breakdown</h2>
@@ -468,7 +521,7 @@ const ExpenseReport = () => {
         </div>
       </section>
 
-      {/* Records */}
+      {/* RECORDS */}
 
       <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-200 px-5 py-4">
@@ -561,9 +614,7 @@ const ExpenseReport = () => {
   );
 };
 
-// ----------------------------------
-// Summary Card
-// ----------------------------------
+// SUMMARY CARD
 
 const SummaryCard = ({ icon: Icon, title, value }) => {
   return (
@@ -583,9 +634,7 @@ const SummaryCard = ({ icon: Icon, title, value }) => {
   );
 };
 
-// ----------------------------------
-// Breakdown Item
-// ----------------------------------
+// BREAKDOWN ITEM
 
 const BreakdownItem = ({ label, value }) => {
   return (
@@ -597,9 +646,7 @@ const BreakdownItem = ({ label, value }) => {
   );
 };
 
-// ----------------------------------
-// Status Badge
-// ----------------------------------
+// STATUS BADGE
 
 const StatusBadge = ({ status }) => {
   const normalizedStatus = String(status || "").toLowerCase();
@@ -608,6 +655,8 @@ const StatusBadge = ({ status }) => {
 
   if (normalizedStatus === "approved") {
     className = "bg-green-50 text-green-700";
+  } else if (normalizedStatus === "paid") {
+    className = "bg-blue-50 text-blue-700";
   } else if (normalizedStatus === "pending") {
     className = "bg-yellow-50 text-yellow-700";
   } else if (normalizedStatus === "cancelled") {
@@ -623,9 +672,7 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// ----------------------------------
-// Table Header
-// ----------------------------------
+// TABLE HEADER
 
 const TableHeader = ({ children }) => {
   return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -10,62 +10,92 @@ import {
   Clock3,
   CheckCircle2,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
+import { useFestival } from "../../context/FestivalContext";
 import { getDistributionReport } from "../../services/reportService";
 
-const DistributionReport = () => {
-  const [report, setReport] = useState(null);
+const INITIAL_FILTERS = {
+  startDate: "",
+  endDate: "",
+  volunteerId: "",
+  status: "",
+};
 
+const DistributionReport = () => {
+  const navigate = useNavigate();
+
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
+  const festivalId = currentFestival?._id;
+
+  const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [filters, setFilters] = useState({
-    startDate: "",
-    endDate: "",
-    volunteerId: "",
-    status: "",
-  });
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
 
   const [search, setSearch] = useState("");
 
-  const fetchReport = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const params = {};
-
-      if (filters.startDate) {
-        params.startDate = filters.startDate;
+  const fetchReport = useCallback(
+    async (customFilters = filters) => {
+      if (!festivalId) {
+        setReport(null);
+        setLoading(false);
+        return;
       }
 
-      if (filters.endDate) {
-        params.endDate = filters.endDate;
+      try {
+        setLoading(true);
+        setError("");
+
+        const params = {
+          festivalId,
+        };
+
+        if (customFilters.startDate) {
+          params.startDate = customFilters.startDate;
+        }
+
+        if (customFilters.endDate) {
+          params.endDate = customFilters.endDate;
+        }
+
+        if (customFilters.volunteerId.trim()) {
+          params.volunteerId = customFilters.volunteerId.trim();
+        }
+
+        if (customFilters.status) {
+          params.status = customFilters.status;
+        }
+
+        const response = await getDistributionReport(params);
+
+        setReport(response.data);
+      } catch (error) {
+        setError(
+          error.response?.data?.message ||
+            "Failed to fetch distribution report",
+        );
+      } finally {
+        setLoading(false);
       }
-
-      if (filters.volunteerId.trim()) {
-        params.volunteerId = filters.volunteerId.trim();
-      }
-
-      if (filters.status) {
-        params.status = filters.status;
-      }
-
-      const response = await getDistributionReport(params);
-
-      setReport(response.data);
-    } catch (error) {
-      setError(
-        error.response?.data?.message || "Failed to fetch distribution report",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [festivalId, filters],
+  );
 
   useEffect(() => {
-    fetchReport();
-  }, []);
+    if (festivalLoading) return;
+
+    if (!festivalId) {
+      setReport(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
+    fetchReport(INITIAL_FILTERS);
+  }, [festivalId, festivalLoading, fetchReport]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -78,22 +108,14 @@ const DistributionReport = () => {
 
   const handleApplyFilters = (e) => {
     e.preventDefault();
-    fetchReport();
+    fetchReport(filters);
   };
 
   const handleResetFilters = () => {
-    setFilters({
-      startDate: "",
-      endDate: "",
-      volunteerId: "",
-      status: "",
-    });
-
+    setFilters(INITIAL_FILTERS);
     setSearch("");
 
-    setTimeout(() => {
-      fetchReport();
-    }, 0);
+    fetchReport(INITIAL_FILTERS);
   };
 
   const formatCurrency = (amount = 0) => {
@@ -212,10 +234,35 @@ const DistributionReport = () => {
     cashWithVolunteers: 0,
   };
 
-  if (loading) {
+  if (festivalLoading || loading) {
     return (
       <div className="flex min-h-100 items-center justify-center">
         <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  if (!currentFestival) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <button
+          type="button"
+          onClick={() => navigate("/reports")}
+          className="inline-flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Reports
+        </button>
+
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-5">
+          <h2 className="font-semibold text-yellow-900">
+            No Festival Selected
+          </h2>
+
+          <p className="mt-1 text-sm text-yellow-700">
+            Please select a festival before viewing the distribution report.
+          </p>
+        </div>
       </div>
     );
   }
@@ -242,15 +289,24 @@ const DistributionReport = () => {
           <p className="mt-1 text-sm text-gray-500">
             Track cash distributed to volunteers and returned amounts.
           </p>
+
+          <div className="mt-2 text-sm text-gray-500">
+            Festival:{" "}
+            <span className="font-medium text-gray-900">
+              {currentFestival.name}
+            </span>{" "}
+            ({currentFestival.year})
+          </div>
         </div>
 
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={fetchReport}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            onClick={() => fetchReport(filters)}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
 
@@ -409,7 +465,7 @@ const DistributionReport = () => {
         />
       </section>
 
-      {/* Search */}
+      {/* Search + Records */}
 
       <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-gray-200 p-5 md:flex-row md:items-center md:justify-between">
@@ -436,8 +492,6 @@ const DistributionReport = () => {
             />
           </div>
         </div>
-
-        {/* Table */}
 
         {filteredRecords.length === 0 ? (
           <div className="p-10 text-center">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -14,65 +14,93 @@ import {
   Wallet,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+import { useFestival } from "../../context/FestivalContext";
 import { getDailyTallyReport } from "../../services/reportService";
+
+const INITIAL_FILTERS = {
+  startDate: "",
+  endDate: "",
+  status: "",
+};
 
 const DailyTallyReport = () => {
   const navigate = useNavigate();
+
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
+  const festivalId = currentFestival?._id;
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [filters, setFilters] = useState({
-    startDate: "",
-    endDate: "",
-    status: "",
-  });
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
 
   // ----------------------------------
   // Fetch Daily Tally Report
   // ----------------------------------
 
-  const fetchReport = async (customFilters = filters) => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const params = {};
-
-      if (customFilters.startDate) {
-        params.startDate = customFilters.startDate;
+  const fetchReport = useCallback(
+    async (customFilters = filters) => {
+      if (!festivalId) {
+        setReport(null);
+        setLoading(false);
+        return;
       }
 
-      if (customFilters.endDate) {
-        params.endDate = customFilters.endDate;
+      try {
+        setLoading(true);
+        setError("");
+
+        const params = {
+          festivalId,
+        };
+
+        if (customFilters.startDate) {
+          params.startDate = customFilters.startDate;
+        }
+
+        if (customFilters.endDate) {
+          params.endDate = customFilters.endDate;
+        }
+
+        if (customFilters.status) {
+          params.status = customFilters.status;
+        }
+
+        const response = await getDailyTallyReport(params);
+
+        setReport(response.data || null);
+      } catch (error) {
+        console.error("Failed to fetch daily tally report:", error);
+
+        setError(
+          error.response?.data?.message || "Failed to fetch daily tally report",
+        );
+      } finally {
+        setLoading(false);
       }
-
-      if (customFilters.status) {
-        params.status = customFilters.status;
-      }
-
-      const response = await getDailyTallyReport(params);
-
-      setReport(response.data || null);
-    } catch (error) {
-      console.error("Failed to fetch daily tally report:", error);
-
-      setError(
-        error.response?.data?.message || "Failed to fetch daily tally report",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [festivalId, filters],
+  );
 
   // ----------------------------------
-  // Initial Load
+  // Initial Load / Festival Change
   // ----------------------------------
 
   useEffect(() => {
-    fetchReport();
-  }, []);
+    if (festivalLoading) return;
+
+    if (!festivalId) {
+      setReport(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
+    fetchReport(INITIAL_FILTERS);
+  }, [festivalId, festivalLoading, fetchReport]);
 
   // ----------------------------------
   // Filter Change
@@ -102,15 +130,9 @@ const DailyTallyReport = () => {
   // ----------------------------------
 
   const handleReset = () => {
-    const resetFilters = {
-      startDate: "",
-      endDate: "",
-      status: "",
-    };
+    setFilters(INITIAL_FILTERS);
 
-    setFilters(resetFilters);
-
-    fetchReport(resetFilters);
+    fetchReport(INITIAL_FILTERS);
   };
 
   // ----------------------------------
@@ -152,7 +174,7 @@ const DailyTallyReport = () => {
 
     if (normalizedStatus === "reopened") {
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-2.5 py-1 text-xs font-medium capitalize text-yellow-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-2.5 py-1 text-xs font-medium text-yellow-700">
           <Clock3 className="h-3.5 w-3.5" />
           Reopened
         </span>
@@ -161,7 +183,7 @@ const DailyTallyReport = () => {
 
     if (normalizedStatus === "closed") {
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium capitalize text-green-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
           <CheckCircle2 className="h-3.5 w-3.5" />
           Closed
         </span>
@@ -169,7 +191,7 @@ const DailyTallyReport = () => {
     }
 
     return (
-      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-700">
+      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
         {status || "-"}
       </span>
     );
@@ -219,6 +241,7 @@ const DailyTallyReport = () => {
 
     const summaryRows = [
       ["Daily Tally Report"],
+      [`Festival: ${currentFestival.name} (${currentFestival.year})`],
       [],
       ["Summary"],
       ["Total Days", summary.totalDays || 0],
@@ -261,10 +284,39 @@ const DailyTallyReport = () => {
   // Loading
   // ----------------------------------
 
-  if (loading && !report) {
+  if (festivalLoading || (loading && !report)) {
     return (
       <div className="flex min-h-100 items-center justify-center">
         <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // ----------------------------------
+  // No Festival
+  // ----------------------------------
+
+  if (!currentFestival) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <button
+          type="button"
+          onClick={() => navigate("/reports")}
+          className="inline-flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Reports
+        </button>
+
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-5">
+          <h2 className="font-semibold text-yellow-900">
+            No Festival Selected
+          </h2>
+
+          <p className="mt-1 text-sm text-yellow-700">
+            Please select a festival before viewing the daily tally report.
+          </p>
+        </div>
       </div>
     );
   }
@@ -274,14 +326,10 @@ const DailyTallyReport = () => {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* ----------------------------------
-          Header
-      ---------------------------------- */}
+      {/* Header */}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          {/* Back to Reports */}
-
           <button
             type="button"
             onClick={() => navigate("/reports")}
@@ -298,13 +346,17 @@ const DailyTallyReport = () => {
           <p className="mt-1 text-sm text-gray-500">
             View daily financial closing records and cash position.
           </p>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Festival:{" "}
+            <span className="font-medium text-gray-900">
+              {currentFestival.name}
+            </span>{" "}
+            ({currentFestival.year})
+          </p>
         </div>
 
-        {/* Header Actions */}
-
         <div className="flex gap-2">
-          {/* Refresh */}
-
           <button
             type="button"
             onClick={() => fetchReport(filters)}
@@ -314,8 +366,6 @@ const DailyTallyReport = () => {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
-
-          {/* Export CSV */}
 
           <button
             type="button"
@@ -329,9 +379,7 @@ const DailyTallyReport = () => {
         </div>
       </div>
 
-      {/* ----------------------------------
-          Error
-      ---------------------------------- */}
+      {/* Error */}
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -339,9 +387,7 @@ const DailyTallyReport = () => {
         </div>
       )}
 
-      {/* ----------------------------------
-          Filters
-      ---------------------------------- */}
+      {/* Filters */}
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4">
@@ -356,8 +402,6 @@ const DailyTallyReport = () => {
           onSubmit={handleApplyFilters}
           className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
         >
-          {/* Start Date */}
-
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
               Start Date
@@ -372,8 +416,6 @@ const DailyTallyReport = () => {
             />
           </div>
 
-          {/* End Date */}
-
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
               End Date
@@ -387,8 +429,6 @@ const DailyTallyReport = () => {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500"
             />
           </div>
-
-          {/* Status */}
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -406,8 +446,6 @@ const DailyTallyReport = () => {
               <option value="reopened">Reopened</option>
             </select>
           </div>
-
-          {/* Buttons */}
 
           <div className="flex items-end gap-2">
             <button
@@ -430,9 +468,7 @@ const DailyTallyReport = () => {
         </form>
       </section>
 
-      {/* ----------------------------------
-          Summary
-      ---------------------------------- */}
+      {/* Summary */}
 
       <section>
         <div className="mb-4">
@@ -484,9 +520,7 @@ const DailyTallyReport = () => {
         </div>
       </section>
 
-      {/* ----------------------------------
-          Records
-      ---------------------------------- */}
+      {/* Records */}
 
       <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-col gap-2 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -555,49 +589,33 @@ const DailyTallyReport = () => {
                       key={record._id}
                       className="transition hover:bg-gray-50"
                     >
-                      {/* Date */}
-
                       <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-gray-900">
                         {formatDate(record.tallyDate)}
                       </td>
-
-                      {/* Opening Cash */}
 
                       <td className="whitespace-nowrap px-5 py-4 text-right text-sm text-gray-700">
                         {formatCurrency(record.openingCash)}
                       </td>
 
-                      {/* Income */}
-
                       <td className="whitespace-nowrap px-5 py-4 text-right text-sm font-medium text-green-600">
                         {formatCurrency(record.totalIncome)}
                       </td>
-
-                      {/* Expense */}
 
                       <td className="whitespace-nowrap px-5 py-4 text-right text-sm font-medium text-red-600">
                         {formatCurrency(record.totalExpense)}
                       </td>
 
-                      {/* Distributed */}
-
                       <td className="whitespace-nowrap px-5 py-4 text-right text-sm text-orange-600">
                         {formatCurrency(record.cashDistributed)}
                       </td>
-
-                      {/* Returned */}
 
                       <td className="whitespace-nowrap px-5 py-4 text-right text-sm text-green-600">
                         {formatCurrency(record.cashReturned)}
                       </td>
 
-                      {/* Cash On Hand */}
-
                       <td className="whitespace-nowrap px-5 py-4 text-right text-sm font-semibold text-gray-900">
                         {formatCurrency(record.cashOnHand)}
                       </td>
-
-                      {/* Overall Balance */}
 
                       <td
                         className={`whitespace-nowrap px-5 py-4 text-right text-sm font-semibold ${
@@ -609,13 +627,9 @@ const DailyTallyReport = () => {
                         {formatCurrency(overallBalance)}
                       </td>
 
-                      {/* Status */}
-
                       <td className="px-5 py-4 text-center">
                         {getStatusBadge(record.status)}
                       </td>
-
-                      {/* Action */}
 
                       <td className="px-5 py-4 text-center">
                         <button
@@ -639,10 +653,6 @@ const DailyTallyReport = () => {
   );
 };
 
-/* ----------------------------------
-   Summary Card
----------------------------------- */
-
 const SummaryCard = ({ icon: Icon, title, value }) => {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -662,10 +672,6 @@ const SummaryCard = ({ icon: Icon, title, value }) => {
     </div>
   );
 };
-
-/* ----------------------------------
-   Table Header+
----------------------------------- */
 
 const TableHeader = ({ children, align = "left" }) => {
   const alignment =
