@@ -39,6 +39,9 @@ import { FestivalProvider } from "../context/FestivalContext";
 import ChangePassword from "../pages/settings/ChangePassword";
 import EditIncome from "../pages/income/EditIncome";
 import EditExpense from "../pages/expenses/EditExpense";
+import AddVolunteer from "../pages/volunteers/AddVolunteer";
+import VolunteerDetails from "../pages/volunteers/VolunteerDetails";
+import EditVolunteer from "../pages/volunteers/EditVolunteer";
 
 const AppRoutes = () => {
   return (
@@ -99,8 +102,16 @@ const AppRoutes = () => {
               element={<FestivalSummaryReport />}
             />
 
+            {/* Volunteers Routes */}
             <Route path="/volunteers" element={<Volunteers />} />
 
+            <Route path="/volunteers/add" element={<AddVolunteer />} />
+
+            <Route path="/volunteers/:id" element={<VolunteerDetails />} />
+
+            <Route path="/volunteers/:id/edit" element={<EditVolunteer />} />
+
+            {/* Settings Routes */}
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/profile" element={<Profile />} />
             <Route
