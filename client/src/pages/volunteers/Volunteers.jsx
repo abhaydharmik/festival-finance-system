@@ -1,492 +1,334 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CheckCircle,
-  Edit,
-  Eye,
-  Mail,
-  Phone,
-  Plus,
-  RefreshCw,
+  UserPlus,
   Search,
-  UserRound,
   Users,
-  XCircle,
+  UserCheck,
+  UserX,
+  Eye,
+  Edit,
+  RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 import { getUsers } from "../../services/userService";
+import { useFestival } from "../../context/FestivalContext";
 
 const Volunteers = () => {
   const navigate = useNavigate();
 
-  // =====================================================
-  // STATE
-  // =====================================================
+  const { currentFestival, loading: festivalLoading } = useFestival();
 
   const [volunteers, setVolunteers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const fetchVolunteers = useCallback(async () => {
+    if (!currentFestival?._id) {
+      setVolunteers([]);
+      setLoading(false);
+      return;
+    }
 
-  const [error, setError] = useState("");
+    setLoading(true);
 
-  // =====================================================
-  // FETCH VOLUNTEERS
-  // =====================================================
-
-  const fetchVolunteers = useCallback(async (isRefresh = false) => {
     try {
-      setError("");
-
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
       const response = await getUsers({
         role: "volunteer",
+        festivalId: currentFestival._id,
       });
 
-      const responseData = response?.data;
+      const users = response.data?.users || response.data || [];
 
-      let volunteerList = [];
+      setVolunteers(Array.isArray(users) ? users : []);
+    } catch (error) {
+      console.error("Failed to fetch volunteers:", error);
 
-      // Standard API response:
-      // response.data.users
-      if (Array.isArray(responseData?.users)) {
-        volunteerList = responseData.users;
-      }
+      toast.error(error.response?.data?.message || "Failed to load volunteers");
 
-      // Fallback if API directly returns an array
-      else if (Array.isArray(responseData)) {
-        volunteerList = responseData;
-      }
-
-      // Fallback if API returns:
-      // response.data.data.users
-      else if (Array.isArray(responseData?.data?.users)) {
-        volunteerList = responseData.data.users;
-      }
-
-      setVolunteers(volunteerList);
-    } catch (err) {
-      console.error("Failed to fetch volunteers:", err);
-
-      const message =
-        err.response?.data?.message || "Failed to load volunteers.";
-
-      setError(message);
       setVolunteers([]);
-
-      toast.error(message);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, []);
-
-  // =====================================================
-  // INITIAL LOAD
-  // =====================================================
+  }, [currentFestival?._id]);
 
   useEffect(() => {
-    fetchVolunteers();
-  }, [fetchVolunteers]);
-
-  // =====================================================
-  // SEARCH
-  // =====================================================
+    if (!festivalLoading) {
+      fetchVolunteers();
+    }
+  }, [festivalLoading, fetchVolunteers]);
 
   const filteredVolunteers = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const searchTerm = search.trim().toLowerCase();
 
-    if (!query) {
+    if (!searchTerm) {
       return volunteers;
     }
 
     return volunteers.filter((volunteer) => {
-      const name = volunteer.name?.toLowerCase() || "";
-      const email = volunteer.email?.toLowerCase() || "";
-      const phone = volunteer.phone?.toLowerCase() || "";
-
       return (
-        name.includes(query) || email.includes(query) || phone.includes(query)
+        volunteer.name?.toLowerCase().includes(searchTerm) ||
+        volunteer.email?.toLowerCase().includes(searchTerm) ||
+        volunteer.phone?.toLowerCase().includes(searchTerm)
       );
     });
   }, [volunteers, search]);
 
-  // =====================================================
-  // SUMMARY
-  // =====================================================
-
   const totalVolunteers = volunteers.length;
 
-  const activeVolunteers = useMemo(() => {
-    return volunteers.filter((volunteer) => volunteer.isActive).length;
-  }, [volunteers]);
+  const activeVolunteers = volunteers.filter(
+    (volunteer) => volunteer.isActive,
+  ).length;
 
-  const inactiveVolunteers = useMemo(() => {
-    return volunteers.filter((volunteer) => !volunteer.isActive).length;
-  }, [volunteers]);
+  const inactiveVolunteers = volunteers.filter(
+    (volunteer) => !volunteer.isActive,
+  ).length;
 
-  // =====================================================
-  // REFRESH
-  // =====================================================
+  if (festivalLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <RefreshCw className="h-5 w-5 animate-spin" />
+          Loading festival...
+        </div>
+      </div>
+    );
+  }
 
-  const handleRefresh = () => {
-    fetchVolunteers(true);
-  };
+  if (!currentFestival) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="max-w-md rounded-2xl border border-yellow-200 bg-yellow-50 p-6 text-center">
+          <h2 className="text-lg font-semibold text-yellow-800">
+            No Festival Selected
+          </h2>
 
-  // =====================================================
-  // NAVIGATION
-  // =====================================================
-
-  const handleView = (id) => {
-    navigate(`/volunteers/${id}`);
-  };
-
-  const handleEdit = (id) => {
-    navigate(`/volunteers/${id}/edit`);
-  };
-
-  const handleAdd = () => {
-    navigate("/volunteers/add");
-  };
-
-  // =====================================================
-  // UI
-  // =====================================================
+          <p className="mt-2 text-sm text-yellow-700">
+            Please select a festival before managing volunteers.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-full space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-            <Users size={22} />
-          </div>
-
-          <div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">Volunteers</h1>
 
-            <p className="text-sm text-gray-500">
-              View and manage your volunteer directory
-            </p>
+            <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+              {currentFestival.name} {currentFestival.year}
+            </span>
           </div>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Manage volunteers for the selected festival.
+          </p>
         </div>
 
-        {/* HEADER ACTIONS */}
+        <button
+          type="button"
+          onClick={() => navigate("/volunteers/add")}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+        >
+          <UserPlus className="h-4 w-4" />
+          Add Volunteer
+        </button>
+      </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={loading || refreshing}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw size={17} className={refreshing ? "animate-spin" : ""} />
+      {/* Festival Information */}
+      <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-indigo-500">
+              Current Festival
+            </p>
 
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </button>
+            <p className="text-lg font-bold text-indigo-900">
+              {currentFestival.name}
+            </p>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
-          >
-            <Plus size={17} />
-            Add Volunteer
-          </button>
+          <span className="text-sm font-medium text-indigo-700">
+            Year: {currentFestival.year}
+          </span>
         </div>
       </div>
 
-      {/* =================================================
-          SUMMARY CARDS
-      ================================================= */}
-
+      {/* Statistics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* TOTAL */}
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">
-                Total Volunteers
-              </p>
+              <p className="text-sm text-gray-500">Total Volunteers</p>
 
-              <p className="mt-2 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-gray-900">
                 {totalVolunteers}
               </p>
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
-              <Users size={21} />
+            <div className="rounded-xl bg-blue-100 p-3 text-blue-600">
+              <Users className="h-5 w-5" />
             </div>
           </div>
         </div>
 
-        {/* ACTIVE */}
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">
-                Active Volunteers
-              </p>
+              <p className="text-sm text-gray-500">Active</p>
 
-              <p className="mt-2 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-green-600">
                 {activeVolunteers}
               </p>
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-green-100 text-green-600">
-              <CheckCircle size={21} />
+            <div className="rounded-xl bg-green-100 p-3 text-green-600">
+              <UserCheck className="h-5 w-5" />
             </div>
           </div>
         </div>
 
-        {/* INACTIVE */}
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">
-                Inactive Volunteers
-              </p>
+              <p className="text-sm text-gray-500">Inactive</p>
 
-              <p className="mt-2 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-red-600">
                 {inactiveVolunteers}
               </p>
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-red-100 text-red-600">
-              <XCircle size={21} />
+            <div className="rounded-xl bg-red-100 p-3 text-red-600">
+              <UserX className="h-5 w-5" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* =================================================
-          MAIN CARD
-      ================================================= */}
+      {/* Search */}
+      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        {/* SEARCH */}
-
-        <div className="border-b border-gray-200 p-4 sm:p-5">
-          <div className="relative w-full sm:max-w-md">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by name, email or phone..."
-              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by name, email or phone..."
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+          />
         </div>
+      </div>
 
-        {/* =================================================
-            LOADING
-        ================================================= */}
-
+      {/* Content */}
+      <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
         {loading ? (
-          <div className="flex min-h-75 items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <RefreshCw size={26} className="animate-spin text-indigo-600" />
-
-              <p className="text-sm text-gray-500">Loading volunteers...</p>
+          <div className="flex min-h-62.5 items-center justify-center">
+            <div className="flex items-center gap-3 text-gray-500">
+              <RefreshCw className="h-5 w-5 animate-spin" />
+              Loading volunteers...
             </div>
-          </div>
-        ) : error ? (
-          /* =================================================
-             ERROR
-          ================================================= */
-
-          <div className="flex min-h-75 flex-col items-center justify-center px-4 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
-              <XCircle size={24} />
-            </div>
-
-            <h3 className="text-base font-semibold text-gray-900">
-              Unable to load volunteers
-            </h3>
-
-            <p className="mt-1 max-w-md text-sm text-gray-500">{error}</p>
-
-            <button
-              type="button"
-              onClick={() => fetchVolunteers()}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
-            >
-              <RefreshCw size={16} />
-              Try Again
-            </button>
           </div>
         ) : filteredVolunteers.length === 0 ? (
-          /* =================================================
-             EMPTY
-          ================================================= */
+          <div className="flex min-h-62.5 flex-col items-center justify-center px-6 text-center">
+            <Users className="h-10 w-10 text-gray-300" />
 
-          <div className="flex min-h-75 flex-col items-center justify-center px-4 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-              {search ? <Search size={22} /> : <UserRound size={22} />}
-            </div>
-
-            <h3 className="text-base font-semibold text-gray-900">
-              {search ? "No volunteers found" : "No volunteers available"}
+            <h3 className="mt-3 font-semibold text-gray-800">
+              No volunteers found
             </h3>
 
-            <p className="mt-1 max-w-md text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500">
               {search
-                ? "Try changing your search criteria."
-                : "There are currently no volunteers in the system."}
+                ? "Try a different search term."
+                : "No volunteers are registered for this festival yet."}
             </p>
-
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-              >
-                Clear search
-              </button>
-            )}
           </div>
         ) : (
           <>
-            {/* =================================================
-                DESKTOP TABLE
-            ================================================= */}
-
+            {/* Desktop Table */}
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-175">
-                <thead className="bg-gray-50">
-                  <tr className="border-b border-gray-200">
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <table className="w-full text-left">
+                <thead className="border-b bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Volunteer
                     </th>
 
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Email
-                    </th>
-
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Phone
                     </th>
 
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Role
-                    </th>
-
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Status
                     </th>
 
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Actions
                     </th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y">
                   {filteredVolunteers.map((volunteer) => (
                     <tr
                       key={volunteer._id}
                       className="transition hover:bg-gray-50"
                     >
-                      {/* VOLUNTEER */}
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {volunteer.name}
+                          </p>
 
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-600">
-                            {volunteer.name?.charAt(0)?.toUpperCase() || "V"}
-                          </div>
-
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {volunteer.name || "—"}
-                            </p>
-
-                            <p className="text-xs text-gray-500">Volunteer</p>
-                          </div>
+                          <p className="text-sm text-gray-500">
+                            {volunteer.email}
+                          </p>
                         </div>
                       </td>
 
-                      {/* EMAIL */}
-
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Mail size={15} className="text-gray-400" />
-
-                          {volunteer.email || "—"}
-                        </div>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {volunteer.phone || "—"}
                       </td>
 
-                      {/* PHONE */}
-
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone size={15} className="text-gray-400" />
-
-                          {volunteer.phone || "—"}
-                        </div>
-                      </td>
-
-                      {/* ROLE */}
-
-                      <td className="px-5 py-4">
-                        <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium capitalize text-indigo-700">
-                          {volunteer.role || "volunteer"}
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            volunteer.isActive
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {volunteer.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
 
-                      {/* STATUS */}
-
-                      <td className="px-5 py-4">
-                        {volunteer.isActive ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
-                            <CheckCircle size={14} />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
-                            <XCircle size={14} />
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-
-                      {/* ACTIONS */}
-
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => handleView(volunteer._id)}
-                            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-indigo-600"
-                            title="View volunteer"
+                            onClick={() =>
+                              navigate(`/volunteers/${volunteer._id}`)
+                            }
+                            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                            title="View"
                           >
-                            <Eye size={17} />
+                            <Eye className="h-4 w-4" />
                           </button>
 
                           <button
                             type="button"
-                            onClick={() => handleEdit(volunteer._id)}
-                            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-indigo-600"
-                            title="Edit volunteer"
+                            onClick={() =>
+                              navigate(`/volunteers/${volunteer._id}/edit`)
+                            }
+                            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                            title="Edit"
                           >
-                            <Edit size={17} />
+                            <Edit className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -496,110 +338,59 @@ const Volunteers = () => {
               </table>
             </div>
 
-            {/* =================================================
-                MOBILE CARDS
-            ================================================= */}
-
-            <div className="divide-y divide-gray-100 md:hidden">
+            {/* Mobile Cards */}
+            <div className="divide-y md:hidden">
               {filteredVolunteers.map((volunteer) => (
                 <div key={volunteer._id} className="p-4">
-                  <div className="flex items-start gap-3">
-                    {/* AVATAR */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900">
+                        {volunteer.name}
+                      </p>
 
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-600">
-                      {volunteer.name?.charAt(0)?.toUpperCase() || "V"}
+                      <p className="mt-1 break-all text-sm text-gray-500">
+                        {volunteer.email}
+                      </p>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        {volunteer.phone || "No phone number"}
+                      </p>
                     </div>
 
-                    {/* CONTENT */}
+                    <span
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                        volunteer.isActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {volunteer.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="truncate font-semibold text-gray-900">
-                            {volunteer.name || "—"}
-                          </h3>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/volunteers/${volunteer._id}`)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </button>
 
-                          <span className="mt-1 inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium capitalize text-indigo-700">
-                            {volunteer.role || "volunteer"}
-                          </span>
-                        </div>
-
-                        {/* STATUS */}
-
-                        {volunteer.isActive ? (
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
-                            <CheckCircle size={13} />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
-                            <XCircle size={13} />
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-
-                      {/* CONTACT */}
-
-                      <div className="mt-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Mail size={15} className="shrink-0 text-gray-400" />
-
-                          <span className="truncate">
-                            {volunteer.email || "No email"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone size={15} className="shrink-0 text-gray-400" />
-
-                          <span>{volunteer.phone || "No phone number"}</span>
-                        </div>
-                      </div>
-
-                      {/* MOBILE ACTIONS */}
-
-                      <div className="mt-4 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleView(volunteer._id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                        >
-                          <Eye size={15} />
-                          View
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(volunteer._id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                        >
-                          <Edit size={15} />
-                          Edit
-                        </button>
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/volunteers/${volunteer._id}/edit`)
+                      }
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </button>
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* =================================================
-                FOOTER
-            ================================================= */}
-
-            <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-              <p className="text-sm text-gray-500">
-                Showing{" "}
-                <span className="font-medium text-gray-700">
-                  {filteredVolunteers.length}
-                </span>{" "}
-                of{" "}
-                <span className="font-medium text-gray-700">
-                  {totalVolunteers}
-                </span>{" "}
-                volunteers
-              </p>
             </div>
           </>
         )}

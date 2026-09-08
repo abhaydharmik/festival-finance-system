@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, Save, UserRoundPen } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getUserById, updateUser } from "../../services/userService";
+import { useFestival } from "../../context/FestivalContext";
 
 const EditVolunteer = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const { id } = useParams();
+
+  const { currentFestival, loading: festivalLoading } = useFestival();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -16,33 +19,34 @@ const EditVolunteer = () => {
     password: "",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchVolunteer = async () => {
+      if (!currentFestival?._id || !id) {
+        return;
+      }
+
+      setLoading(true);
+
       try {
-        setLoading(true);
+        const response = await getUserById(id, currentFestival._id);
 
-        const response = await getUserById(id);
-        const user = response.data?.user;
-
-        if (!user) {
-          throw new Error("Volunteer not found");
-        }
+        const user = response.data?.user || response.data;
 
         setFormData({
-          name: user.name || "",
-          email: user.email || "",
-          phone: user.phone || "",
+          name: user?.name || "",
+          email: user?.email || "",
+          phone: user?.phone || "",
           password: "",
         });
       } catch (error) {
-        console.error(error);
+        console.error("Failed to fetch volunteer:", error);
 
         toast.error(
-          error.response?.data?.message || "Failed to load volunteer",
+          error.response?.data?.message ||
+            "Volunteer not found in this festival.",
         );
 
         navigate("/volunteers");
@@ -51,14 +55,16 @@ const EditVolunteer = () => {
       }
     };
 
-    fetchVolunteer();
-  }, [id, navigate]);
+    if (!festivalLoading) {
+      fetchVolunteer();
+    }
+  }, [id, currentFestival?._id, festivalLoading, navigate]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData((previous) => ({
-      ...previous,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
     }));
   };
@@ -66,168 +72,185 @@ const EditVolunteer = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!formData.name.trim()) {
-      toast.error("Name is required");
+    if (!currentFestival?._id) {
+      toast.error("No festival selected.");
       return;
     }
 
-    if (!formData.email.trim()) {
-      toast.error("Email is required");
-      return;
-    }
-
-    if (formData.password && formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
+    setSaving(true);
 
     try {
-      setSaving(true);
-
       const updateData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
       };
 
-      if (formData.password) {
+      if (formData.password.trim()) {
         updateData.password = formData.password;
       }
 
-      await updateUser(id, updateData);
+      await updateUser(id, updateData, currentFestival._id);
 
-      toast.success("Volunteer updated successfully");
+      toast.success("Volunteer updated successfully.");
 
       navigate(`/volunteers/${id}`);
     } catch (error) {
-      console.error(error);
+      console.error("Failed to update volunteer:", error);
 
       toast.error(
-        error.response?.data?.message || "Failed to update volunteer",
+        error.response?.data?.message || "Failed to update volunteer.",
       );
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (festivalLoading || loading) {
     return (
-      <div className="flex min-h-100 items-center justify-center">
-        <p className="text-sm text-gray-500">Loading volunteer...</p>
+      <div className="flex min-h-[60vh] items-center justify-center text-gray-500">
+        Loading volunteer...
+      </div>
+    );
+  }
+
+  if (!currentFestival) {
+    return (
+      <div className="p-6">
+        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
+          <h2 className="font-semibold text-yellow-800">
+            No Festival Selected
+          </h2>
+
+          <p className="mt-1 text-sm text-yellow-700">
+            Please select a festival.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-full p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-3xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => navigate(`/volunteers/${id}`)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-          >
-            <ArrowLeft size={19} />
-          </button>
+    <div className="mx-auto max-w-3xl p-4 sm:p-6 lg:p-8">
+      <button
+        type="button"
+        onClick={() => navigate(`/volunteers/${id}`)}
+        className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Volunteer
+      </button>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <UserRoundPen size={22} className="text-indigo-600" />
+      <div className="rounded-2xl border bg-white shadow-sm">
+        <div className="border-b p-6">
+          <h1 className="text-xl font-bold text-gray-900">Edit Volunteer</h1>
 
-              <h1 className="text-2xl font-bold text-gray-900">
-                Edit Volunteer
-              </h1>
-            </div>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Update volunteer account information
-            </p>
-          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            Update volunteer information.
+          </p>
         </div>
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
-        >
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+          {/* Festival */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Festival
+            </label>
 
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              />
-            </div>
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+              <p className="font-semibold text-indigo-900">
+                {currentFestival.name}
+              </p>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Email
-              </label>
-
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Phone
-              </label>
-
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                New Password
-                <span className="ml-1 font-normal text-gray-400">
-                  (optional)
-                </span>
-              </label>
-
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Leave blank to keep current password"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-11 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((previous) => !previous)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+              <p className="text-sm text-indigo-700">
+                Year: {currentFestival.year}
+              </p>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
+          {/* Name */}
+          <div>
+            <label
+              htmlFor="name"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Name
+            </label>
+
+            <input
+              id="name"
+              name="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label
+              htmlFor="email"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Email
+            </label>
+
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label
+              htmlFor="phone"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Phone
+            </label>
+
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              New Password
+            </label>
+
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Leave blank to keep current password"
+              minLength={6}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => navigate(`/volunteers/${id}`)}
-              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-xl border px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
@@ -235,9 +258,9 @@ const EditVolunteer = () => {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Save size={17} />
+              <Save className="h-4 w-4" />
 
               {saving ? "Saving..." : "Save Changes"}
             </button>

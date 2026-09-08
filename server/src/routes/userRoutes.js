@@ -10,27 +10,26 @@ const {
 } = require("../controllers/userController");
 
 const { protect } = require("../middleware/authMiddleware");
-
 const { authorize } = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
-// Get all users
+// USERS
 router.get("/", protect, authorize("admin"), getUsers);
 
-// Active volunteers
+// VOLUNTEERS
 router.get("/volunteers", protect, authorize("admin"), getVolunteers);
 
-// Get user by ID
-router.get("/:id", protect, authorize("admin"), getUserById);
-
-// Create user
+// CREATE
 router.post("/", protect, authorize("admin"), createUser);
 
-// Update user
+// SINGLE VOLUNTEER
+router.get("/:id", protect, authorize("admin"), getUserById);
+
+// UPDATE VOLUNTEER
 router.put("/:id", protect, authorize("admin"), updateUser);
 
-// Activate / deactivate
+// ACTIVATE / DEACTIVATE
 router.patch("/:id/status", protect, authorize("admin"), updateUserStatus);
 
 module.exports = router;

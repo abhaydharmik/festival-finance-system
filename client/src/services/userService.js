@@ -8,14 +8,22 @@ export const getUsers = async (params = {}) => {
   return response.data;
 };
 
-export const getUserById = async (id) => {
-  const response = await api.get(`/users/${id}`);
+export const getUserById = async (id, festivalId) => {
+  const response = await api.get(`/users/${id}`, {
+    params: {
+      festivalId,
+    },
+  });
 
   return response.data;
 };
 
-export const getVolunteers = async () => {
-  const response = await api.get("/users/volunteers");
+export const getVolunteers = async (festivalId) => {
+  const response = await api.get("/users/volunteers", {
+    params: {
+      festivalId,
+    },
+  });
 
   return response.data;
 };
@@ -26,14 +34,28 @@ export const createUser = async (data) => {
   return response.data;
 };
 
-export const updateUser = async (id, data) => {
-  const response = await api.put(`/users/${id}`, data);
+export const updateUser = async (id, data, festivalId) => {
+  const response = await api.put(`/users/${id}`, data, {
+    params: {
+      festivalId,
+    },
+  });
 
   return response.data;
 };
 
-export const updateUserStatus = async (id, isActive) => {
-  const response = await api.patch(`/users/${id}/status`, { isActive });
+export const updateUserStatus = async (id, isActive, festivalId) => {
+  const response = await api.patch(
+    `/users/${id}/status`,
+    {
+      isActive,
+    },
+    {
+      params: {
+        festivalId,
+      },
+    },
+  );
 
   return response.data;
 };
