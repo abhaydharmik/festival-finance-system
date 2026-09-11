@@ -24,6 +24,9 @@ const Volunteers = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // --------------------------------------------------
+  // Fetch Volunteers
+  // --------------------------------------------------
   const fetchVolunteers = useCallback(async () => {
     if (!currentFestival?._id) {
       setVolunteers([]);
@@ -31,21 +34,23 @@ const Volunteers = () => {
       return;
     }
 
-    setLoading(true);
-
     try {
+      setLoading(true);
+
       const response = await getUsers({
         role: "volunteer",
         festivalId: currentFestival._id,
       });
 
-      const users = response.data?.users || response.data || [];
+      const users = response?.data?.users || response?.data || [];
 
       setVolunteers(Array.isArray(users) ? users : []);
     } catch (error) {
       console.error("Failed to fetch volunteers:", error);
 
-      toast.error(error.response?.data?.message || "Failed to load volunteers");
+      toast.error(
+        error?.response?.data?.message || "Failed to load volunteers",
+      );
 
       setVolunteers([]);
     } finally {
@@ -53,12 +58,18 @@ const Volunteers = () => {
     }
   }, [currentFestival?._id]);
 
+  // --------------------------------------------------
+  // Initial Fetch
+  // --------------------------------------------------
   useEffect(() => {
     if (!festivalLoading) {
       fetchVolunteers();
     }
   }, [festivalLoading, fetchVolunteers]);
 
+  // --------------------------------------------------
+  // Search
+  // --------------------------------------------------
   const filteredVolunteers = useMemo(() => {
     const searchTerm = search.trim().toLowerCase();
 
@@ -75,6 +86,9 @@ const Volunteers = () => {
     });
   }, [volunteers, search]);
 
+  // --------------------------------------------------
+  // Statistics
+  // --------------------------------------------------
   const totalVolunteers = volunteers.length;
 
   const activeVolunteers = volunteers.filter(
@@ -85,10 +99,13 @@ const Volunteers = () => {
     (volunteer) => !volunteer.isActive,
   ).length;
 
+  // --------------------------------------------------
+  // Festival Loading
+  // --------------------------------------------------
   if (festivalLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3 text-gray-600">
+        <div className="flex items-center gap-3 text-gray-500">
           <RefreshCw className="h-5 w-5 animate-spin" />
           Loading festival...
         </div>
@@ -96,15 +113,22 @@ const Volunteers = () => {
     );
   }
 
+  // --------------------------------------------------
+  // No Festival
+  // --------------------------------------------------
   if (!currentFestival) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-md rounded-2xl border border-yellow-200 bg-yellow-50 p-6 text-center">
-          <h2 className="text-lg font-semibold text-yellow-800">
+        <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
+            <Users className="h-6 w-6 text-gray-500" />
+          </div>
+
+          <h2 className="mt-4 text-lg font-semibold text-gray-900">
             No Festival Selected
           </h2>
 
-          <p className="mt-2 text-sm text-yellow-700">
+          <p className="mt-2 text-sm text-gray-500">
             Please select a festival before managing volunteers.
           </p>
         </div>
@@ -112,212 +136,225 @@ const Volunteers = () => {
     );
   }
 
+  // --------------------------------------------------
+  // Main UI
+  // --------------------------------------------------
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="space-y-6">
+      {/* --------------------------------------------- */}
       {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      {/* --------------------------------------------- */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">Volunteers</h1>
 
-            <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
               {currentFestival.name} {currentFestival.year}
             </span>
           </div>
 
           <p className="mt-1 text-sm text-gray-500">
-            Manage volunteers for the selected festival.
+            Manage volunteers for the selected festival
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => navigate("/volunteers/add")}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
         >
-          <UserPlus className="h-4 w-4" />
+          <UserPlus size={18} />
           Add Volunteer
         </button>
       </div>
 
+      {/* --------------------------------------------- */}
       {/* Festival Information */}
-      <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      {/* --------------------------------------------- */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-indigo-500">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
               Current Festival
             </p>
 
-            <p className="text-lg font-bold text-indigo-900">
+            <h2 className="mt-1 text-lg font-semibold text-gray-900">
               {currentFestival.name}
+            </h2>
+          </div>
+
+          <div className="rounded-lg bg-gray-50 px-3 py-2">
+            <p className="text-xs text-gray-400">Year</p>
+
+            <p className="text-sm font-semibold text-gray-700">
+              {currentFestival.year}
             </p>
           </div>
-
-          <span className="text-sm font-medium text-indigo-700">
-            Year: {currentFestival.year}
-          </span>
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Volunteers</p>
+      {/* --------------------------------------------- */}
+      {/* Summary Cards */}
+      {/* --------------------------------------------- */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Total Volunteers */}
+        <SummaryCard
+          title="Total Volunteers"
+          value={totalVolunteers}
+          icon={Users}
+        />
 
-              <p className="mt-1 text-2xl font-bold text-gray-900">
-                {totalVolunteers}
-              </p>
-            </div>
+        {/* Active Volunteers */}
+        <SummaryCard
+          title="Active Volunteers"
+          value={activeVolunteers}
+          icon={UserCheck}
+        />
 
-            <div className="rounded-xl bg-blue-100 p-3 text-blue-600">
-              <Users className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Active</p>
-
-              <p className="mt-1 text-2xl font-bold text-green-600">
-                {activeVolunteers}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-green-100 p-3 text-green-600">
-              <UserCheck className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Inactive</p>
-
-              <p className="mt-1 text-2xl font-bold text-red-600">
-                {inactiveVolunteers}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-red-100 p-3 text-red-600">
-              <UserX className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
+        {/* Inactive Volunteers */}
+        <SummaryCard
+          title="Inactive Volunteers"
+          value={inactiveVolunteers}
+          icon={UserX}
+        />
       </div>
 
+      {/* --------------------------------------------- */}
       {/* Search */}
-      <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      {/* --------------------------------------------- */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
 
           <input
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by name, email or phone..."
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-black focus:ring-1 focus:ring-black"
           />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      {/* --------------------------------------------- */}
+      {/* Volunteers Table / Cards */}
+      {/* --------------------------------------------- */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        {/* Header */}
+        <div className="border-b border-gray-200 px-5 py-4">
+          <div>
+            <h2 className="font-semibold text-gray-900">Volunteer Records</h2>
+
+            <p className="mt-1 text-xs text-gray-500">
+              {filteredVolunteers.length} volunteer
+              {filteredVolunteers.length !== 1 ? "s" : ""} found
+            </p>
+          </div>
+        </div>
+
+        {/* Loading */}
         {loading ? (
-          <div className="flex min-h-62.5 items-center justify-center">
-            <div className="flex items-center gap-3 text-gray-500">
-              <RefreshCw className="h-5 w-5 animate-spin" />
-              Loading volunteers...
-            </div>
+          <div className="flex min-h-60 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-black" />
           </div>
         ) : filteredVolunteers.length === 0 ? (
-          <div className="flex min-h-62.5 flex-col items-center justify-center px-6 text-center">
-            <Users className="h-10 w-10 text-gray-300" />
+          /* Empty State */
+          <div className="flex min-h-60 flex-col items-center justify-center px-4 text-center">
+            <Users size={40} className="mb-3 text-gray-300" />
 
-            <h3 className="mt-3 font-semibold text-gray-800">
-              No volunteers found
-            </h3>
+            <h3 className="font-medium text-gray-900">No volunteers found</h3>
 
             <p className="mt-1 text-sm text-gray-500">
               {search
-                ? "Try a different search term."
+                ? "Try changing your search term."
                 : "No volunteers are registered for this festival yet."}
             </p>
+
+            {!search && (
+              <button
+                type="button"
+                onClick={() => navigate("/volunteers/add")}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+              >
+                <UserPlus size={16} />
+                Add Volunteer
+              </button>
+            )}
           </div>
         ) : (
           <>
             {/* Desktop Table */}
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full text-left">
-                <thead className="border-b bg-gray-50">
+              <table className="w-full min-w-175 text-left">
+                <thead className="border-b border-gray-200 bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Volunteer
-                    </th>
-
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Phone
-                    </th>
-
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Status
-                    </th>
-
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Actions
-                    </th>
+                    <TableHeader>Volunteer</TableHeader>
+                    <TableHeader>Phone</TableHeader>
+                    <TableHeader>Role</TableHeader>
+                    <TableHeader>Status</TableHeader>
+                    <TableHeader align="right">Action</TableHeader>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-gray-100">
                   {filteredVolunteers.map((volunteer) => (
                     <tr
                       key={volunteer._id}
                       className="transition hover:bg-gray-50"
                     >
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {volunteer.name}
-                          </p>
+                      {/* Volunteer */}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                            <Users size={17} className="text-gray-500" />
+                          </div>
 
-                          <p className="text-sm text-gray-500">
-                            {volunteer.email}
-                          </p>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-gray-900">
+                              {volunteer.name || "-"}
+                            </p>
+
+                            <p className="truncate text-xs text-gray-500">
+                              {volunteer.email || "-"}
+                            </p>
+                          </div>
                         </div>
                       </td>
 
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {volunteer.phone || "—"}
+                      {/* Phone */}
+                      <td className="px-4 py-4 text-sm text-gray-600">
+                        {volunteer.phone || "-"}
                       </td>
 
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                            volunteer.isActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {volunteer.isActive ? "Active" : "Inactive"}
+                      {/* Role */}
+                      <td className="px-4 py-4">
+                        <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-700">
+                          {volunteer.role || "volunteer"}
                         </span>
                       </td>
 
-                      <td className="px-6 py-4">
+                      {/* Status */}
+                      <td className="px-4 py-4">
+                        <StatusBadge isActive={volunteer.isActive} />
+                      </td>
+
+                      {/* Action */}
+                      <td className="px-4 py-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
                             onClick={() =>
                               navigate(`/volunteers/${volunteer._id}`)
                             }
-                            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
-                            title="View"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+                            title="View Volunteer"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye size={15} />
+                            View
                           </button>
 
                           <button
@@ -325,10 +362,11 @@ const Volunteers = () => {
                             onClick={() =>
                               navigate(`/volunteers/${volunteer._id}/edit`)
                             }
-                            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
-                            title="Edit"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+                            title="Edit Volunteer"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit size={15} />
+                            Edit
                           </button>
                         </div>
                       </td>
@@ -339,42 +377,52 @@ const Volunteers = () => {
             </div>
 
             {/* Mobile Cards */}
-            <div className="divide-y md:hidden">
+            <div className="divide-y divide-gray-100 md:hidden">
               {filteredVolunteers.map((volunteer) => (
                 <div key={volunteer._id} className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-gray-900">
-                        {volunteer.name}
-                      </p>
-
-                      <p className="mt-1 break-all text-sm text-gray-500">
-                        {volunteer.email}
-                      </p>
-
-                      <p className="mt-1 text-sm text-gray-500">
-                        {volunteer.phone || "No phone number"}
-                      </p>
+                  <div className="flex items-start gap-3">
+                    {/* Avatar */}
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                      <Users size={18} className="text-gray-500" />
                     </div>
 
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                        volunteer.isActive
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {volunteer.isActive ? "Active" : "Inactive"}
-                    </span>
+                    {/* Details */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-gray-900">
+                            {volunteer.name || "-"}
+                          </p>
+
+                          <p className="mt-1 break-all text-sm text-gray-500">
+                            {volunteer.email || "-"}
+                          </p>
+
+                          <p className="mt-1 text-sm text-gray-500">
+                            {volunteer.phone || "No phone number"}
+                          </p>
+                        </div>
+
+                        <StatusBadge isActive={volunteer.isActive} />
+                      </div>
+
+                      {/* Role */}
+                      <div className="mt-3">
+                        <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-700">
+                          {volunteer.role || "volunteer"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Actions */}
                   <div className="mt-4 flex gap-2">
                     <button
                       type="button"
                       onClick={() => navigate(`/volunteers/${volunteer._id}`)}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
-                      <Eye className="h-4 w-4" />
+                      <Eye size={15} />
                       View
                     </button>
 
@@ -383,9 +431,9 @@ const Volunteers = () => {
                       onClick={() =>
                         navigate(`/volunteers/${volunteer._id}/edit`)
                       }
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit size={15} />
                       Edit
                     </button>
                   </div>
@@ -396,6 +444,52 @@ const Volunteers = () => {
         )}
       </div>
     </div>
+  );
+};
+
+// Summary Card
+
+const SummaryCard = ({ title, value, icon: Icon }) => {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-500">{title}</p>
+
+          <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
+        </div>
+
+        <div className="rounded-lg bg-gray-100 p-2.5">
+          <Icon size={20} className="text-gray-700" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Table Header
+
+const TableHeader = ({ children, align = "left" }) => {
+  return (
+    <th
+      className={`px-4 py-3 text-${align} text-xs font-semibold uppercase tracking-wide text-gray-500`}
+    >
+      {children}
+    </th>
+  );
+};
+
+// Status Badge
+
+const StatusBadge = ({ isActive }) => {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+        isActive ? "bg-gray-100 text-gray-700" : "bg-gray-200 text-gray-500"
+      }`}
+    >
+      {isActive ? "Active" : "Inactive"}
+    </span>
   );
 };
 

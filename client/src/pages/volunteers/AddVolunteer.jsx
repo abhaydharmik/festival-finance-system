@@ -80,7 +80,7 @@ const AddVolunteer = () => {
 
   if (festivalLoading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center text-gray-500">
         Loading festival...
       </div>
     );
@@ -89,12 +89,10 @@ const AddVolunteer = () => {
   if (!currentFestival) {
     return (
       <div className="p-6">
-        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
-          <h2 className="font-semibold text-yellow-800">
-            No Festival Selected
-          </h2>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-900">No Festival Selected</h2>
 
-          <p className="mt-1 text-sm text-yellow-700">
+          <p className="mt-1 text-sm text-gray-500">
             Please select a festival before adding a volunteer.
           </p>
         </div>
@@ -104,50 +102,54 @@ const AddVolunteer = () => {
 
   return (
     <div className="mx-auto max-w-3xl p-4 sm:p-6 lg:p-8">
+      {/* Back Button */}
       <button
         type="button"
         onClick={() => navigate("/volunteers")}
-        className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+        className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition hover:text-gray-900"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Volunteers
       </button>
 
-      <div className="rounded-2xl border bg-white shadow-sm">
-        <div className="border-b p-6">
+      {/* Main Card */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        {/* Header */}
+        <div className="border-b border-gray-200 px-5 py-5 sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-indigo-100 p-3 text-indigo-600">
+            <div className="rounded-lg bg-gray-100 p-3 text-gray-700">
               <UserPlus className="h-5 w-5" />
             </div>
 
             <div>
               <h1 className="text-xl font-bold text-gray-900">Add Volunteer</h1>
 
-              <p className="text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500">
                 Add a volunteer to the selected festival.
               </p>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6 p-5 sm:p-6">
           {/* Festival */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Festival
             </label>
 
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-              <p className="font-semibold text-indigo-900">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <p className="font-semibold text-gray-900">
                 {currentFestival.name}
               </p>
 
-              <p className="text-sm text-indigo-700">
+              <p className="mt-0.5 text-sm text-gray-500">
                 Year: {currentFestival.year}
               </p>
             </div>
 
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-gray-500">
               The volunteer will be assigned to this festival.
             </p>
           </div>
@@ -168,7 +170,9 @@ const AddVolunteer = () => {
               value={formData.name}
               onChange={handleChange}
               placeholder="Enter volunteer name"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              required
+              autoComplete="name"
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-100"
             />
           </div>
 
@@ -188,7 +192,9 @@ const AddVolunteer = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter email address"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              required
+              autoComplete="email"
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-100"
             />
           </div>
 
@@ -208,7 +214,8 @@ const AddVolunteer = () => {
               value={formData.phone}
               onChange={handleChange}
               placeholder="Enter phone number"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              autoComplete="tel"
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-100"
             />
           </div>
 
@@ -229,18 +236,21 @@ const AddVolunteer = () => {
               onChange={handleChange}
               placeholder="Enter password"
               minLength={6}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              required
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-100"
             />
 
-            <p className="mt-1 text-xs text-gray-500">Minimum 6 characters.</p>
+            <p className="mt-2 text-xs text-gray-500">Minimum 6 characters.</p>
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => navigate("/volunteers")}
-              className="rounded-xl border px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              disabled={loading}
+              className="rounded-lg border border-gray-200 px-5 py-3 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
@@ -248,8 +258,10 @@ const AddVolunteer = () => {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-5 py-3 text-sm text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
+              <UserPlus className="h-4 w-4" />
+
               {loading ? "Creating..." : "Create Volunteer"}
             </button>
           </div>
