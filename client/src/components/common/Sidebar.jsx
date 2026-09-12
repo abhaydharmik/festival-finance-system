@@ -13,9 +13,11 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
+import { useFestival } from "../../context/FestivalContext";
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const { currentFestival } = useFestival();
 
   const menuItems = [
     {
@@ -81,15 +83,15 @@ const Sidebar = () => {
   return (
     <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-black text-white md:flex">
       {/* Logo */}
-
       <div className="border-b border-gray-800 p-6">
-        <h1 className="text-xl font-bold">Ganesh Mahotsav</h1>
+        <h1 className="truncate text-xl font-bold">
+          {currentFestival?.name || "Festival Finance"}
+        </h1>
 
         <p className="mt-1 text-sm text-gray-400">Management System</p>
       </div>
 
       {/* Navigation */}
-
       <nav className="flex-1 overflow-y-auto p-4">
         <div className="space-y-1">
           {visibleItems.map((item) => {
@@ -117,7 +119,6 @@ const Sidebar = () => {
       </nav>
 
       {/* User */}
-
       <div className="border-t border-gray-800 p-4">
         <div className="mb-3">
           <p className="truncate text-sm font-medium">{user?.name}</p>

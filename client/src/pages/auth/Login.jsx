@@ -55,9 +55,8 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-slate-900">Ganesh Mahotsav</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Festial Finance System</h1>
 
-          <p className="mt-2 text-slate-500">Management System</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
