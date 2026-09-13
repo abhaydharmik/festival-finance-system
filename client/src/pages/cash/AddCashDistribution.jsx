@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 import { createCashDistribution } from "../../services/cashDistributionService";
 import api from "../../services/api";
+import { useFestival } from "../../context/FestivalContext";
 
 const PURPOSES = [
   { value: "decoration", label: "Decoration" },
@@ -19,14 +20,14 @@ const PURPOSES = [
 const AddCashDistribution = () => {
   const navigate = useNavigate();
 
-  const [festivals, setFestivals] = useState([]);
+  const { currentFestival, loading: festivalLoading } = useFestival();
+
   const [volunteers, setVolunteers] = useState([]);
 
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    festivalId: "",
     volunteerId: "",
     amountGiven: "",
     purpose: "",
@@ -35,80 +36,68 @@ const AddCashDistribution = () => {
   });
 
   // =====================================================
-  // FETCH FESTIVALS + VOLUNTEERS
+  // FETCH VOLUNTEERS FOR CURRENT FESTIVAL
   // =====================================================
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchVolunteers = async () => {
+      if (!currentFestival?._id) {
+        setVolunteers([]);
+        setLoadingData(false);
+        return;
+      }
+
       try {
         setLoadingData(true);
 
-        const [festivalResponse, volunteerResponse] = await Promise.all([
-          api.get("/festivals"),
-          api.get("/users/volunteers"),
-        ]);
+        const response = await api.get("/users/volunteers", {
+          params: {
+            festivalId: currentFestival._id,
+          },
+        });
 
-        // =================================================
-        // FESTIVALS
-        // =================================================
+        const responseData = response.data;
 
-        const festivalResponseData = festivalResponse.data;
-
-        const festivalData = festivalResponseData?.data ?? festivalResponseData;
-
-        let festivalList = [];
-
-        if (Array.isArray(festivalData)) {
-          festivalList = festivalData;
-        } else if (Array.isArray(festivalData?.festivals)) {
-          festivalList = festivalData.festivals;
-        } else if (Array.isArray(festivalResponseData?.festivals)) {
-          festivalList = festivalResponseData.festivals;
-        }
-
-        setFestivals(festivalList);
-
-        // =================================================
-        // VOLUNTEERS
-        // =================================================
-
-        const volunteerResponseData = volunteerResponse.data;
-
-        const volunteerData =
-          volunteerResponseData?.data ?? volunteerResponseData;
+        const data = responseData?.data ?? responseData;
 
         let volunteerList = [];
 
-        if (Array.isArray(volunteerData)) {
-          volunteerList = volunteerData;
-        } else if (Array.isArray(volunteerData?.volunteers)) {
-          volunteerList = volunteerData.volunteers;
-        } else if (Array.isArray(volunteerData?.users)) {
-          volunteerList = volunteerData.users;
-        } else if (Array.isArray(volunteerResponseData?.volunteers)) {
-          volunteerList = volunteerResponseData.volunteers;
-        } else if (Array.isArray(volunteerResponseData?.users)) {
-          volunteerList = volunteerResponseData.users;
+        if (Array.isArray(data)) {
+          volunteerList = data;
+        } else if (Array.isArray(data?.volunteers)) {
+          volunteerList = data.volunteers;
+        } else if (Array.isArray(data?.users)) {
+          volunteerList = data.users;
+        } else if (Array.isArray(responseData?.volunteers)) {
+          volunteerList = responseData.volunteers;
+        } else if (Array.isArray(responseData?.users)) {
+          volunteerList = responseData.users;
         }
 
         setVolunteers(volunteerList);
 
-        console.log("Festivals loaded:", festivalList);
-        console.log("Volunteers loaded:", volunteerList);
+        // Clear selected volunteer when festival changes
+        setFormData((previous) => ({
+          ...previous,
+          volunteerId: "",
+        }));
       } catch (error) {
-        console.error("Failed to load cash distribution form data:", error);
+        console.error("Failed to load volunteers:", error);
+
+        setVolunteers([]);
 
         toast.error(
-          error.response?.data?.message ||
-            "Failed to load festivals and volunteers",
+          error.response?.data?.message || "Failed to load volunteers.",
         );
       } finally {
         setLoadingData(false);
       }
     };
 
-    fetchData();
-  }, []);
+    if (!festivalLoading) {
+      fetchVolunteers();
+    }
+  }, [currentFestival?._id, festivalLoading]);
 
   // =====================================================
   // HANDLE CHANGE
@@ -130,30 +119,34 @@ const AddCashDistribution = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!formData.festivalId) {
-      toast.error("Please select a festival");
+    // Festival validation
+    if (!currentFestival?._id) {
+      toast.error("Please select a festival first.");
       return;
     }
 
+    // Volunteer validation
     if (!formData.volunteerId) {
-      toast.error("Please select a volunteer");
+      toast.error("Please select a volunteer.");
       return;
     }
 
+    // Amount validation
     if (!formData.amountGiven) {
-      toast.error("Please enter amount");
+      toast.error("Please enter amount.");
       return;
     }
 
     const amount = Number(formData.amountGiven);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("Amount must be greater than zero");
+      toast.error("Amount must be greater than zero.");
       return;
     }
 
+    // Purpose validation
     if (!formData.purpose) {
-      toast.error("Please select a purpose");
+      toast.error("Please select a purpose.");
       return;
     }
 
@@ -161,9 +154,13 @@ const AddCashDistribution = () => {
       setSubmitting(true);
 
       const payload = {
-        festivalId: formData.festivalId,
+        // Always use the currently selected festival
+        festivalId: currentFestival._id,
+
         volunteerId: formData.volunteerId,
+
         amountGiven: amount,
+
         purpose: formData.purpose,
 
         distributionDate:
@@ -176,14 +173,14 @@ const AddCashDistribution = () => {
 
       await createCashDistribution(payload);
 
-      toast.success("Cash distribution created successfully");
+      toast.success("Cash distribution created successfully.");
 
       navigate("/cash");
     } catch (error) {
       console.error("Create cash distribution error:", error);
 
       toast.error(
-        error.response?.data?.message || "Failed to create cash distribution",
+        error.response?.data?.message || "Failed to create cash distribution.",
       );
     } finally {
       setSubmitting(false);
@@ -194,17 +191,41 @@ const AddCashDistribution = () => {
   // LOADING
   // =====================================================
 
-  if (loadingData) {
+  if (festivalLoading || loadingData) {
     return (
-      <div className="flex min-h-100 items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
           <p className="text-sm font-medium text-gray-700">
             Loading cash distribution form...
           </p>
 
-          <p className="mt-1 text-xs text-gray-400">
-            Loading festivals and volunteers
+          <p className="mt-1 text-xs text-gray-400">Loading volunteers</p>
+        </div>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // NO FESTIVAL
+  // =====================================================
+
+  if (!currentFestival) {
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-900">No Festival Selected</h2>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Please select a festival before distributing cash.
           </p>
+
+          <button
+            type="button"
+            onClick={() => navigate("/cash")}
+            className="mt-4 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+          >
+            Back to Cash Distribution
+          </button>
         </div>
       </div>
     );
@@ -268,50 +289,42 @@ const AddCashDistribution = () => {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
-                Festival <span className="text-red-500">*</span>
+                Festival
               </label>
 
-              <select
-                name="festivalId"
-                value={formData.festivalId}
-                onChange={handleChange}
-                disabled={submitting}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 disabled:bg-gray-100"
-              >
-                <option value="">Select festival</option>
-
-                {festivals.map((festival) => {
-                  const festivalId = festival._id || festival.id;
-
-                  return (
-                    <option key={festivalId} value={festivalId}>
-                      {festival.name || "Unnamed Festival"}
-
-                      {festival.year ? ` - ${festival.year}` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-
-              {festivals.length === 0 && (
-                <p className="mt-1 text-xs text-red-500">
-                  No festivals available.
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <p className="font-semibold text-gray-900">
+                  {currentFestival.name}
                 </p>
-              )}
+
+                <p className="mt-0.5 text-sm text-gray-500">
+                  Year: {currentFestival.year}
+                </p>
+              </div>
+
+              <p className="mt-2 text-xs text-gray-500">
+                Cash distribution will be recorded for the currently selected
+                festival.
+              </p>
             </div>
 
             {/* VOLUNTEER */}
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="volunteerId"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Volunteer <span className="text-red-500">*</span>
               </label>
 
               <select
+                id="volunteerId"
                 name="volunteerId"
                 value={formData.volunteerId}
                 onChange={handleChange}
-                disabled={submitting}
+                disabled={submitting || volunteers.length === 0}
+                required
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 disabled:bg-gray-100"
               >
                 <option value="">Select volunteer</option>
@@ -330,8 +343,8 @@ const AddCashDistribution = () => {
               </select>
 
               {volunteers.length === 0 && (
-                <p className="mt-1 text-xs text-red-500">
-                  No active volunteers available.
+                <p className="mt-2 text-xs text-red-500">
+                  No active volunteers available for this festival.
                 </p>
               )}
             </div>
@@ -339,7 +352,10 @@ const AddCashDistribution = () => {
             {/* AMOUNT */}
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="amountGiven"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Amount Given <span className="text-red-500">*</span>
               </label>
 
@@ -349,6 +365,7 @@ const AddCashDistribution = () => {
                 </span>
 
                 <input
+                  id="amountGiven"
                   type="number"
                   name="amountGiven"
                   value={formData.amountGiven}
@@ -357,6 +374,7 @@ const AddCashDistribution = () => {
                   step="0.01"
                   placeholder="Enter amount"
                   disabled={submitting}
+                  required
                   className="w-full rounded-lg border border-gray-300 px-8 py-2.5 text-sm outline-none transition focus:border-gray-900 disabled:bg-gray-100"
                 />
               </div>
@@ -365,15 +383,20 @@ const AddCashDistribution = () => {
             {/* PURPOSE */}
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="purpose"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Purpose <span className="text-red-500">*</span>
               </label>
 
               <select
+                id="purpose"
                 name="purpose"
                 value={formData.purpose}
                 onChange={handleChange}
                 disabled={submitting}
+                required
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-900 disabled:bg-gray-100"
               >
                 <option value="">Select purpose</option>
@@ -389,11 +412,15 @@ const AddCashDistribution = () => {
             {/* DATE */}
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="distributionDate"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Distribution Date
               </label>
 
               <input
+                id="distributionDate"
                 type="date"
                 name="distributionDate"
                 value={formData.distributionDate}
@@ -406,11 +433,15 @@ const AddCashDistribution = () => {
             {/* REMARKS */}
 
             <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="remarks"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Remarks
               </label>
 
               <textarea
+                id="remarks"
                 name="remarks"
                 value={formData.remarks}
                 onChange={handleChange}
@@ -441,9 +472,7 @@ const AddCashDistribution = () => {
 
             <button
               type="submit"
-              disabled={
-                submitting || festivals.length === 0 || volunteers.length === 0
-              }
+              disabled={submitting || volunteers.length === 0}
               className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Distributing..." : "Distribute Cash"}
