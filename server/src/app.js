@@ -12,6 +12,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const dailyTallyRoutes = require("./routes/dailyTallyRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const exportRoutes = require("./routes/exportRoutes");
+const auditLogRoutes = require("./routes/auditLogRoutes");
 
 const errorHandler = require("./middleware/errorMiddleware");
 
@@ -34,6 +35,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/daily-tally", dailyTallyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/exports", exportRoutes);
+app.use("/api/audit-logs", auditLogRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
