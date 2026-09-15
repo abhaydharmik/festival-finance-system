@@ -1,12 +1,13 @@
 const Counter = require("../models/Counter");
 
-const generateVoucherNumber = async (festivalCode) => {
+const generateVoucherNumber = async (festivalCode, session) => {
   const counter = await Counter.findOneAndUpdate(
     { festivalCode },
     { $inc: { expenseSequence: 1 } },
     {
       returnDocument: "after",
       upsert: true,
+      session,
     },
   );
 

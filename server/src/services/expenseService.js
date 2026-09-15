@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 const { EXPENSE_STATUS } = require("../constants/expenseConstants");
 const { FESTIVAL_STATUS } = require("../constants/festivalConstants");
 const Expense = require("../models/Expense");
@@ -9,35 +9,119 @@ const generateVoucherNumber = require("../utils/generateVoucherNumber");
 
 const { validateExpense } = require("../validators/expenseValidator");
 
+const {
+  AUDIT_ACTIONS,
+  AUDIT_MODULES,
+} = require("../constants/auditLogConstants");
+
+const { createAuditLog } = require("./auditLogService");
+
 // Create  Expense
 const createExpense = async (expenseData, userId) => {
-  // Validate Request
-  validateExpense(expenseData);
+  const session = await mongoose.startSession();
 
-  // Check festival exists
-  const festival = await Festival.findById(expenseData.festivalId);
+  try {
+    let createdExpense;
 
-  if (!festival || !festival.isActive) {
-    throw new ApiError(404, "Festival not found");
+    await session.withTransaction(async () => {
+      validateExpense(expenseData);
+
+      if (!expenseData.festivalId) {
+        throw new ApiError(400, "Festival ID is required");
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(expenseData.festivalId)) {
+        throw new ApiError(400, "Invalid festival ID");
+      }
+
+      const festival = await Festival.findOne({
+        _id: expenseData.festivalId,
+        isActive: true,
+      }).session(session);
+
+      if (!festival) {
+        throw new ApiError(404, "Festival not found");
+      }
+
+      if (festival.status !== FESTIVAL_STATUS.ACTIVE) {
+        throw new ApiError(
+          400,
+          "Expense can only be added to an active festival",
+        );
+      }
+
+      if (expenseData.expenseDate) {
+        await checkDailyTallyLock(
+          expenseData.festivalId,
+          expenseData.expenseDate,
+          session,
+        );
+      }
+
+      const voucherNumber = await generateVoucherNumber(
+        festival.festivalCode,
+        session,
+      );
+
+      const [expense] = await Expense.create(
+        [
+          {
+            ...expenseData,
+            festivalId: festival._id,
+            voucherNumber,
+            paidBy: userId,
+          },
+        ],
+        {
+          session,
+        },
+      );
+
+      createdExpense = expense;
+
+      await createAuditLog({
+        festivalId: expense.festivalId,
+        userId,
+        action: AUDIT_ACTIONS.CREATE,
+        module: AUDIT_MODULES.EXPENSE,
+        recordId: expense._id,
+        recordNumber: expense.voucherNumber,
+
+        description: `Created expense ${expense.voucherNumber}`,
+
+        oldValue: null,
+
+        newValue: {
+          category: expense.category,
+          vendorName: expense.vendorName,
+          description: expense.description,
+          amount: expense.amount,
+          paymentMode: expense.paymentMode,
+          referenceNumber: expense.referenceNumber,
+          expenseDate: expense.expenseDate,
+          paidBy: expense.paidBy,
+          billNumber: expense.billNumber,
+          remarks: expense.remarks,
+          status: expense.status,
+          isCancelled: expense.isCancelled,
+        },
+
+        metadata: {
+          voucherNumber: expense.voucherNumber,
+        },
+
+        session,
+      });
+    });
+
+    const populatedExpense = await Expense.findById(createdExpense._id)
+      .populate("festivalId", "name festivalCode")
+      .populate("paidBy", "name email role");
+
+    return populatedExpense;
+  } finally {
+    await session.endSession();
   }
-
-  if (festival.status !== FESTIVAL_STATUS.ACTIVE) {
-    throw new ApiError(400, "Expense can only be added to an active festival");
-  }
-
-  // Generate voucher number
-  const voucherNumber = await generateVoucherNumber(festival.festivalCode);
-
-  // Create Expense
-  const expense = await Expense.create({
-    ...expenseData,
-    voucherNumber,
-    paidBy: userId,
-  });
-
-  return await Expense.findById(expense._id)
-    .populate("festivalId", "name festivalCode")
-    .populate("paidBy", "name email role");
 };
 
 // Get all expenses
